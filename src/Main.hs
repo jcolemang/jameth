@@ -1,6 +1,6 @@
 module Main where
 
-import Parse
+import JLParse
 import System.Environment
 
 

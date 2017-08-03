@@ -1,8 +1,8 @@
 
-module Parse where
+module JLParse where
 
 
-import Types
+import JLTypes
 import Text.ParserCombinators.Parsec
 
 
@@ -59,8 +59,7 @@ parseExpression
   <|> parseVariable
 
 
-
-
+parseJL :: String -> Either ParseError JLExpression
 parseJL =
   flip parse ""
    $  do val <- parseExpression
