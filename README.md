@@ -6,3 +6,4 @@ plenty of stuff about monads that I can use to clear a room.
 
 ## Cool ideas:
 - Generate parsec code from prolog
+- Interpreter as an Arrow instance
