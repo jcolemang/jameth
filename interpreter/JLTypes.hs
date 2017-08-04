@@ -1,6 +1,13 @@
 
 module JLTypes where
 
+import Text.Parsec
+
+
+-- | Evaluation Data types
+
+data EvaluationState = NothingYet
+
 
 -- | Formal Syntax
 
@@ -12,21 +19,27 @@ data JLForm
   = JLFormExp JLExpression
   deriving (Show)
 
-data JLLiteral
-  = JLStr String
+data JLValue
+  = JLStr  String
   | JLBool Bool
-  | JLInt Integer
-  | JLNum Double
+  | JLInt  Integer
+  | JLNum  Double
+  | JLProc JLClosure
+  | JLVoid
+  deriving (Show, Eq)
+
+data JLClosure
+  = JLClosure
   deriving (Show, Eq)
 
 data JLExpression
-  = JLConst JLLiteral
-  | JLVar String
-  | JLQuote String
-  | JLLambda
-  | JLTwoIf JLExpression JLExpression JLExpression
-  | JLOneIf JLExpression JLExpression
-  | JLApp JLExpression [JLExpression]
+  = JLValue  JLValue SourcePos
+  | JLVar    String SourcePos
+  | JLQuote  String SourcePos
+  | JLLambda SourcePos
+  | JLTwoIf  JLExpression JLExpression   JLExpression SourcePos
+  | JLOneIf  JLExpression JLExpression   SourcePos
+  | JLApp    JLExpression [JLExpression] SourcePos
   deriving (Show)
 
 
@@ -37,7 +50,7 @@ data JLExpression
 
 data JamethError
   = ESyntax SyntaxError
-  | EEval EvaluationError
+  | EEval   EvaluationError
 
 
 data SyntaxError

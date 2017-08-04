@@ -41,16 +41,17 @@ parseForm =
 --                  | <derived expression>
 
 parseExpression :: Parser JLExpression
-parseExpression
-   =  (JLConst <$> parseConstant)
+parseExpression = do
+  pos <- getPosition
+  flip JLValue pos <$> parseConstant
   <|> parseVariable
-  <|> parseIf
+  <|> try parseIf -- same start as application
   <|> parseApplication
 
 
 -- | <constant> --> <boolean> | <number> | <character> | <string> | <special>
 
-parseConstant :: Parser JLLiteral
+parseConstant :: Parser JLValue
 parseConstant
    =  parseBool
   <|> parseString
@@ -60,7 +61,7 @@ parseConstant
 
 -- | <boolean> --> #t | #f
 
-parseBool :: Parser JLLiteral
+parseBool :: Parser JLValue
 parseBool
    =  try (string "#t" >>= const (return . JLBool $ True))
   <|> (string "#f" >>= const (return . JLBool $ False))
@@ -68,7 +69,7 @@ parseBool
 
 -- | <string> --> "<string-character>*"
 
-parseString :: Parser JLLiteral
+parseString :: Parser JLValue
 parseString = do
   _ <- char '"'
   val <- many $ noneOf "\""
@@ -80,25 +81,25 @@ parseString = do
 
 -- | <int> --> <digit>+
 
-parseInt :: Parser JLLiteral
+parseInt :: Parser JLValue
 parseInt =
   JLInt . read <$> many1 digit
 
 
 -- | <double> --> <digit>*.<digit>+ | <digit>+.<digit>*
 
-parseDouble :: Parser JLLiteral
+parseDouble :: Parser JLValue
 parseDouble =
   parseLeftDouble <|> parseRightDouble
 
-parseLeftDouble :: Parser JLLiteral
+parseLeftDouble :: Parser JLValue
 parseLeftDouble = do
   nums <- many1 digit
   decimalPoint <- string "."
   decimals <- flip mappend "0" <$> many digit
   return . JLNum . read $ mappend nums $ mappend decimalPoint decimals
 
-parseRightDouble :: Parser JLLiteral
+parseRightDouble :: Parser JLValue
 parseRightDouble = do
   nums <- mappend "0" <$> many digit
   decimalPoint <- string "."
@@ -130,26 +131,28 @@ parseLambda = undefined
 parseIf :: Parser JLExpression
 parseIf
    =  try parseTwoIf
-  <|> try parseOneIf
+  <|> parseOneIf
 
 parseTwoIf :: Parser JLExpression
 parseTwoIf = do
   _ <- char '(' >> spaces
   _ <- string "if" >> spaces
+  pos <- getPosition
   cond <- parseExpression <* spaces
   ifthen <- parseExpression <* spaces
   ifelse <- parseExpression <* spaces
   _ <- char ')'
-  return $ JLTwoIf cond ifthen ifelse
+  return $ JLTwoIf cond ifthen ifelse pos
 
 parseOneIf :: Parser JLExpression
 parseOneIf = do
   _ <- char '(' >> spaces
   _ <- string "if" >> spaces
+  pos <- getPosition
   cond <- parseExpression <* spaces
   ifthen <- parseExpression <* spaces
   _ <- char ')'
-  return $ JLOneIf cond ifthen
+  return $ JLOneIf cond ifthen pos
 
 
 
@@ -157,7 +160,7 @@ parseOneIf = do
 
 parseIdentifier :: Parser JLExpression
 parseIdentifier =
-  JLVar <$> many1 letter
+  getPosition >>= \pos -> many1 letter >>= \x -> return $ JLVar x pos
 
 
 -- | <application> --> (<expression> <expression>*)
@@ -165,7 +168,8 @@ parseIdentifier =
 parseApplication :: Parser JLExpression
 parseApplication = do
   _ <- char '(' >> spaces
+  pos <- getPosition
   f <- parseExpression <* spaces
   args <- sepEndBy parseExpression spaces
   _ <- char ')'
-  return $ JLApp f args
+  return $ JLApp f args pos
