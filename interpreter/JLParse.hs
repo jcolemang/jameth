@@ -31,10 +31,9 @@ parseForm =
 
 -- | <expression> --> <constant>
 --                  | <variable>
---                  | (quote <datum>) | '<datum>
---                  | (lambda <formals> <body>)
---                  | (case-lambda (<formals> <body>) ...)
---                  | (if <expression> <expression> <expression>) | (if <expression> <expression>)
+--                  | <quote>
+--                  | <lambda>
+--                  | <if>
 --                  | (set! <variable> <expression>)
 --                  | <application>
 --                  | (let-syntax (<syntax binding>*) <expression>+)
@@ -45,6 +44,7 @@ parseExpression :: Parser JLExpression
 parseExpression
    =  (JLConst <$> parseConstant)
   <|> parseVariable
+  <|> parseIf
   <|> parseApplication
 
 
@@ -110,6 +110,47 @@ parseRightDouble = do
 
 parseVariable :: Parser JLExpression
 parseVariable = parseIdentifier
+
+
+-- | <quote> --> (quote <datum>) | '<datum>
+
+parseQuote :: Parser JLExpression
+parseQuote =
+  undefined
+
+
+-- | <lambda> --> (lambda <formals> <body>) | (case-lambda (<formals> <body>) ...)
+
+parseLambda :: Parser JLExpression
+parseLambda = undefined
+
+
+-- | <if> --> (if <expression> <expression> <expression>) | (if <expression> <expression>)
+
+parseIf :: Parser JLExpression
+parseIf
+   =  try parseTwoIf
+  <|> try parseOneIf
+
+parseTwoIf :: Parser JLExpression
+parseTwoIf = do
+  _ <- char '(' >> spaces
+  _ <- string "if" >> spaces
+  cond <- parseExpression <* spaces
+  ifthen <- parseExpression <* spaces
+  ifelse <- parseExpression <* spaces
+  _ <- char ')'
+  return $ JLTwoIf cond ifthen ifelse
+
+parseOneIf :: Parser JLExpression
+parseOneIf = do
+  _ <- char '(' >> spaces
+  _ <- string "if" >> spaces
+  cond <- parseExpression <* spaces
+  ifthen <- parseExpression <* spaces
+  _ <- char ')'
+  return $ JLOneIf cond ifthen
+
 
 
 -- | <identifier> --> <letter>*

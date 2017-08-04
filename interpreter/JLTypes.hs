@@ -22,6 +22,10 @@ data JLLiteral
 data JLExpression
   = JLConst JLLiteral
   | JLVar String
+  | JLQuote String
+  | JLLambda
+  | JLTwoIf JLExpression JLExpression JLExpression
+  | JLOneIf JLExpression JLExpression
   | JLApp JLExpression [JLExpression]
   deriving (Show)
 
