@@ -3,28 +3,26 @@ module JLParse where
 
 import JLTypes
 import Text.ParserCombinators.Parsec
+import Control.Monad.Trans.Either
 
 
 -- | Public API
 
-parseJL :: String -> Either ParseError JLProgram
+parseJL :: (Monad m) => String -> EitherT ParseError m (JLProgram m)
 parseJL =
-  flip parse ""
-   $  do val <- parseProgram
-         eof
-         return val
+  hoistEither . parse (parseProgram <* eof) ""
 
 
 -- | <program> --> <form>*
 
-parseProgram :: Parser JLProgram
+parseProgram :: Parser (JLProgram m)
 parseProgram =
   spaces *> (JLProgram <$> many parseForm) <* spaces
 
 
 -- | <form> --> <definition> | <expression>
 
-parseForm :: Parser JLForm
+parseForm :: Parser (JLForm m)
 parseForm =
   JLFormExp <$> parseExpression
 
@@ -40,18 +38,18 @@ parseForm =
 --                  | (letrec-syntax (<syntax binding>*) <expression>+)
 --                  | <derived expression>
 
-parseExpression :: Parser JLExpression
+parseExpression :: Parser (JLExpression m)
 parseExpression = do
   pos <- getPosition
   flip JLValue pos <$> parseConstant
-  <|> parseVariable
+  <|> try parseVariable
   <|> try parseIf -- same start as application
-  <|> parseApplication
+  <|> try parseApplication
 
 
 -- | <constant> --> <boolean> | <number> | <character> | <string> | <special>
 
-parseConstant :: Parser JLValue
+parseConstant :: Parser (JLValue m)
 parseConstant
    =  parseBool
   <|> parseString
@@ -61,7 +59,7 @@ parseConstant
 
 -- | <boolean> --> #t | #f
 
-parseBool :: Parser JLValue
+parseBool :: Parser (JLValue m)
 parseBool
    =  try (string "#t" >>= const (return . JLBool $ True))
   <|> (string "#f" >>= const (return . JLBool $ False))
@@ -69,7 +67,7 @@ parseBool
 
 -- | <string> --> "<string-character>*"
 
-parseString :: Parser JLValue
+parseString :: Parser (JLValue m)
 parseString = do
   _ <- char '"'
   val <- many $ noneOf "\""
@@ -81,25 +79,25 @@ parseString = do
 
 -- | <int> --> <digit>+
 
-parseInt :: Parser JLValue
+parseInt :: Parser (JLValue m)
 parseInt =
   JLInt . read <$> many1 digit
 
 
 -- | <double> --> <digit>*.<digit>+ | <digit>+.<digit>*
 
-parseDouble :: Parser JLValue
+parseDouble :: Parser (JLValue m)
 parseDouble =
   parseLeftDouble <|> parseRightDouble
 
-parseLeftDouble :: Parser JLValue
+parseLeftDouble :: Parser (JLValue m)
 parseLeftDouble = do
   nums <- many1 digit
   decimalPoint <- string "."
   decimals <- flip mappend "0" <$> many digit
   return . JLNum . read $ mappend nums $ mappend decimalPoint decimals
 
-parseRightDouble :: Parser JLValue
+parseRightDouble :: Parser (JLValue m)
 parseRightDouble = do
   nums <- mappend "0" <$> many digit
   decimalPoint <- string "."
@@ -109,31 +107,31 @@ parseRightDouble = do
 
 -- | <variable> --> <identifier>
 
-parseVariable :: Parser JLExpression
+parseVariable :: Parser (JLExpression m)
 parseVariable = parseIdentifier
 
 
 -- | <quote> --> (quote <datum>) | '<datum>
 
-parseQuote :: Parser JLExpression
+parseQuote :: Parser (JLExpression m)
 parseQuote =
   undefined
 
 
 -- | <lambda> --> (lambda <formals> <body>) | (case-lambda (<formals> <body>) ...)
 
-parseLambda :: Parser JLExpression
+parseLambda :: Parser (JLExpression m)
 parseLambda = undefined
 
 
 -- | <if> --> (if <expression> <expression> <expression>) | (if <expression> <expression>)
 
-parseIf :: Parser JLExpression
+parseIf :: Parser (JLExpression m)
 parseIf
    =  try parseTwoIf
   <|> parseOneIf
 
-parseTwoIf :: Parser JLExpression
+parseTwoIf :: Parser (JLExpression m)
 parseTwoIf = do
   _ <- char '(' >> spaces
   _ <- string "if" >> spaces
@@ -144,7 +142,7 @@ parseTwoIf = do
   _ <- char ')'
   return $ JLTwoIf cond ifthen ifelse pos
 
-parseOneIf :: Parser JLExpression
+parseOneIf :: Parser (JLExpression m)
 parseOneIf = do
   _ <- char '(' >> spaces
   _ <- string "if" >> spaces
@@ -158,14 +156,14 @@ parseOneIf = do
 
 -- | <identifier> --> <letter>*
 
-parseIdentifier :: Parser JLExpression
+parseIdentifier :: Parser (JLExpression m)
 parseIdentifier =
-  getPosition >>= \pos -> many1 letter >>= \x -> return $ JLVar x pos
+  getPosition >>= \pos -> many1 (letter <|> char '+') >>= \x -> return $ JLVar x pos
 
 
 -- | <application> --> (<expression> <expression>*)
 
-parseApplication :: Parser JLExpression
+parseApplication :: Parser (JLExpression m)
 parseApplication = do
   _ <- char '(' >> spaces
   pos <- getPosition
