@@ -41,7 +41,7 @@ parseForm =
 parseExpression :: Parser JLExpression
 parseExpression = do
   pos <- getPosition
-  flip JLValue pos <$> parseConstant
+  flip JLValue pos <$> try parseConstant
   <|> try parseVariable
   <|> try parseIf -- same start as application
   <|> try parseApplication
@@ -156,9 +156,21 @@ parseOneIf = do
 
 -- | <identifier> --> <letter>*
 
+validIdFirstSymbols =
+  letter <|> char '.' <|>  char '+' <|>  char '-' <|>  char '!' <|>  char '$'
+  <|>  char '%' <|>  char '&' <|>  char '*' <|>  char '/' <|>  char ':'
+  <|>  char '<' <|>  char '=' <|>  char '>' <|>  char '?' <|>  char '~'
+  <|>  char '_' <|>  char '^' <|>  char '@'
+
+validIdSymbols =
+  char '#' <|> validIdFirstSymbols
+
 parseIdentifier :: Parser JLExpression
-parseIdentifier =
-  getPosition >>= \pos -> many1 (letter <|> char '+') >>= \x -> return $ JLVar x pos
+parseIdentifier = do
+  pos <- getPosition
+  first <- validIdFirstSymbols
+  rest <- many validIdSymbols
+  return $ JLVar (first:rest) pos
 
 
 -- | <application> --> (<expression> <expression>*)
