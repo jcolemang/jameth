@@ -41,7 +41,7 @@ parseForm =
 parseExpression :: Parser JLExpression
 parseExpression = do
   pos <- getPosition
-  flip JLValue pos <$> try parseConstant
+  flip JLValue pos <$> parseConstant
   <|> try parseVariable
   <|> try parseIf -- same start as application
   <|> try parseApplication
@@ -62,7 +62,7 @@ parseConstant
 parseBool :: Parser JLValue
 parseBool
    =  try (string "#t" >>= const (return . JLBool $ True))
-  <|> (string "#f" >>= const (return . JLBool $ False))
+  <|> try (string "#f" >>= const (return . JLBool $ False))
 
 
 -- | <string> --> "<string-character>*"
