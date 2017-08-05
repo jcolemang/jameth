@@ -8,6 +8,7 @@ import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Except
 import Data.Map
+import Control.Lens
 
 
 -- | Primitive procudures
@@ -42,9 +43,28 @@ initialState = EvaluationState
   { _environment = initialEnvironment }
 
 
+bindArguments :: (Monad m)
+              => JLFormals
+              -> [JLValue]
+              -> ExceptT EvaluationError m (Map String JLValue)
+bindArguments (JLSymbolFormal s) values  =
+  return $ singleton s (JLList values)
+bindArguments (JLFormals ss) values =
+  if length ss == length values
+  then return $ fromList (zip ss values)
+  else throwE JLBadArgumentLength
+bindArguments (JLImproperFormals f mid l) values =
+  let (vf, vl) = splitAt (length (f:mid)) values
+      most = zip (f:mid) vf
+      rest = [(l, JLList vl)]
+  in return $ fromList (mappend most rest)
+
+
 applyClosure :: [JLValue] -> JLClosure -> Evaluation
 applyClosure vals (JLPrimitive f) = f vals
-applyClosure vals (JLClosure formals body _) =
+applyClosure vals (JLClosure formals body _) = do
+  args <- lift $ bindArguments formals vals
+  modify $ over environment (LocalEnv args)
   evalBody body
 
 
@@ -57,8 +77,6 @@ lookupEnv x (GlobalEnv m) =
   case Data.Map.lookup x m of
     Nothing -> mzero
     Just val -> return val
-
-
 
 
 -- | Actual Evaluation

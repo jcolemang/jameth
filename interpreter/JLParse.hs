@@ -188,7 +188,7 @@ parseImproperFormals = do
   _ <- spaces >> char '.' >> spaces
   flast <- parseIdentifier
   _ <- spaces >> char ')'
-  return $ JLImproperFormals (ffirst, frest, flast)
+  return $ JLImproperFormals ffirst frest flast
 
 
 parseBody :: Parser JLBody

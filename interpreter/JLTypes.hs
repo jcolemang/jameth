@@ -1,10 +1,13 @@
 
+{-# LANGUAGE TemplateHaskell #-}
+
 module JLTypes where
 
 import Data.Map
 import Text.Parsec
 import Control.Monad.Trans.State
 import Control.Monad.Trans.Except
+import Control.Lens
 
 
 -- | Evaluation Data types
@@ -45,6 +48,7 @@ data JLValue
   | JLInt  Integer
   | JLNum  Double
   | JLProc JLClosure
+  | JLList [JLValue]
   | JLVoid
   deriving (Show, Eq)
 
@@ -71,7 +75,7 @@ data JLExpression
 data JLFormals
   = JLSymbolFormal    String
   | JLFormals         [String]
-  | JLImproperFormals (String, [String], String)
+  | JLImproperFormals String [String] String
   deriving (Show)
 
 data JLBody
@@ -97,4 +101,7 @@ data EvaluationError
   = JLEvalError
   | JLUndefined
   | JLNotAProcedure
+  | JLBadArgumentLength
   deriving (Show)
+
+makeLenses ''EvaluationState
