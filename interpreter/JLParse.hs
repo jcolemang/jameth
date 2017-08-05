@@ -5,7 +5,6 @@ import JLTypes
 import Text.ParserCombinators.Parsec
 import Control.Monad.Trans.Either
 
-
 -- | Public API
 
 parseJL :: (Monad m) => String -> EitherT ParseError m JLProgram
@@ -25,6 +24,35 @@ parseProgram =
 parseForm :: Parser JLForm
 parseForm =
   JLFormExp <$> parseExpression
+  <|> JLFormDef <$> parseDefinition
+
+-- | <definition> --> <variable def>
+--                  | <syntax definition>
+--                  | (begin <definition>*)
+--                  | <module form>
+--                  | <import form>
+--                  | <meta definition>
+--                  | <alias form>
+--                  | (let-syntax (<syntax binding>*) <definition>*)
+--                  | (letrec-syntax (<syntax binding>*) <definition>*)
+--                  | <derived definition>
+
+parseDefinition :: Parser JLDefinition
+parseDefinition =
+  JLVarDef <$> parseVariableDef
+
+-- | <variable def> --> (define <variable> <expression>)
+--                    | (define <variable>)
+--                    | (define (<variable> <variable>*) <body>)
+--                    | (define (<variable> <variable>* . <variable>) <body>)
+
+parseVariableDef :: Parser JLVariableDefinition
+parseVariableDef = do
+  _ <- char '(' >> spaces >> string "define" >> spaces
+  iden <- parseIdentifier <* spaces
+  body <- parseExpression
+  _ <- spaces >> char ')'
+  return $ JLDefine iden body
 
 
 -- | <expression> --> <constant>
@@ -41,9 +69,10 @@ parseForm =
 parseExpression :: Parser JLExpression
 parseExpression = do
   pos <- getPosition
-  flip JLValue pos <$> parseConstant
+  flip JLValue pos <$> try parseConstant
   <|> try parseVariable
   <|> try parseIf -- same start as application
+  <|> try parseLambda
   <|> try parseApplication
 
 
@@ -51,7 +80,7 @@ parseExpression = do
 
 parseConstant :: Parser JLValue
 parseConstant
-   =  parseBool
+   = parseBool
   <|> parseString
   <|> try parseDouble  -- same start as parseInt, should not consume
   <|> parseInt
@@ -61,7 +90,7 @@ parseConstant
 
 parseBool :: Parser JLValue
 parseBool
-   =  try (string "#t" >>= const (return . JLBool $ True))
+   = try (string "#t" >>= const (return . JLBool $ True))
   <|> try (string "#f" >>= const (return . JLBool $ False))
 
 
@@ -108,7 +137,10 @@ parseRightDouble = do
 -- | <variable> --> <identifier>
 
 parseVariable :: Parser JLExpression
-parseVariable = parseIdentifier
+parseVariable = do
+  pos <- getPosition
+  iden <- parseIdentifier
+  return $ JLVar iden pos
 
 
 -- | <quote> --> (quote <datum>) | '<datum>
@@ -118,13 +150,57 @@ parseQuote =
   undefined
 
 
--- | <lambda> --> (lambda <formals> <body>) | (case-lambda (<formals> <body>) ...)
+-- | <lambda> --> (lambda <formals> <body>)
+--              | (case-lambda (<formals> <body>) ...)
 
 parseLambda :: Parser JLExpression
-parseLambda = undefined
+parseLambda = do
+  _ <- char '(' >> spaces >> string "lambda" >> spaces
+  pos <- getPosition
+  forms <- try parseFormals <* spaces
+  body <- parseBody
+  _ <- spaces >> char ')'
+  return $ JLLambda forms body pos
 
 
--- | <if> --> (if <expression> <expression> <expression>) | (if <expression> <expression>)
+parseFormals :: Parser JLFormals
+parseFormals =
+  try parseListFormals
+  <|> parseSymbolFormals
+  <|> parseImproperFormals
+
+parseListFormals :: Parser JLFormals
+parseListFormals = do
+  _ <- char '(' >> spaces
+  forms <- sepEndBy parseIdentifier spaces
+  _ <- spaces >> char ')'
+  return $ JLFormals forms
+
+parseSymbolFormals :: Parser JLFormals
+parseSymbolFormals =
+  JLSymbolFormal <$> parseIdentifier
+
+parseImproperFormals :: Parser JLFormals
+parseImproperFormals = do
+  _ <- char '(' >> spaces
+  ffirst <- parseIdentifier <* spaces
+  frest <- many parseIdentifier
+  _ <- spaces >> char '.' >> spaces
+  flast <- parseIdentifier
+  _ <- spaces >> char ')'
+  return $ JLImproperFormals (ffirst, frest, flast)
+
+
+parseBody :: Parser JLBody
+parseBody = do
+  defs <- sepEndBy (try parseDefinition) spaces
+  fexp <- parseExpression <* spaces
+  restExps <- sepEndBy parseExpression spaces
+  return $ JLBody defs (fexp, restExps)
+
+
+-- | <if> --> (if <expression> <expression> <expression>)
+--          | (if <expression> <expression>)
 
 parseIf :: Parser JLExpression
 parseIf
@@ -133,8 +209,7 @@ parseIf
 
 parseTwoIf :: Parser JLExpression
 parseTwoIf = do
-  _ <- char '(' >> spaces
-  _ <- string "if" >> spaces
+  _ <- char '(' >> spaces >> string "if" >> spaces
   pos <- getPosition
   cond <- parseExpression <* spaces
   ifthen <- parseExpression <* spaces
@@ -165,12 +240,11 @@ validIdFirstSymbols =
 validIdSymbols =
   char '#' <|> validIdFirstSymbols
 
-parseIdentifier :: Parser JLExpression
+parseIdentifier :: Parser String
 parseIdentifier = do
-  pos <- getPosition
   first <- validIdFirstSymbols
   rest <- many validIdSymbols
-  return $ JLVar (first:rest) pos
+  return (first:rest)
 
 
 -- | <application> --> (<expression> <expression>*)

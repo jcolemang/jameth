@@ -34,15 +34,18 @@ booleanValue _ = False
 
 initialEnvironment :: Environment
 initialEnvironment = GlobalEnv . fromList $
-  [ ("+", JLProc $ JLClosure jlAdd) ]
+  [ ("+", JLProc $ JLPrimitive jlAdd) ]
+
 
 initialState :: EvaluationState
 initialState = EvaluationState
   { _environment = initialEnvironment }
 
 
-applyClosure :: JLClosure -> [JLValue] -> Evaluation
-applyClosure (JLClosure f) = f
+applyClosure :: [JLValue] -> JLClosure -> Evaluation
+applyClosure vals (JLPrimitive f) = f vals
+applyClosure vals (JLClosure formals body _) =
+  evalBody body
 
 
 lookupEnv :: (Monad m) => String -> Environment -> MaybeT m JLValue
@@ -69,6 +72,17 @@ evalProgram code =
   let result = evalProgramT code
   in runExceptT $ evalStateT result initialState
 
+evalBody :: JLBody -> Evaluation
+evalBody (JLBody defs (fexp, frest)) = do
+  foldM (\_ d -> evalDefinition d) JLVoid defs
+  foldM (\_ e -> evalExpression e) JLVoid (fexp:frest)
+
+evalDefinition :: JLDefinition -> Evaluation
+evalDefinition =
+  undefined
+
+
+
 
 evalForm :: JLForm
          -> Evaluation
@@ -83,8 +97,8 @@ evalExpression (JLVar x _) = do
   lift $ maybeToExceptT JLUndefined (lookupEnv x e)
 evalExpression (JLQuote _ _) =
   undefined
-evalExpression (JLLambda _) =
-  undefined
+evalExpression (JLLambda formals body p) =
+  return . JLProc $ JLClosure formals body p
 evalExpression (JLTwoIf condexp thenexp elseexp _) = do
   condVal <- evalExpression condexp
   if booleanValue condVal
@@ -99,5 +113,5 @@ evalExpression (JLApp f args _) = do
   f' <- evalExpression f
   args' <- mapM evalExpression args
   case f' of
-    JLProc c -> applyClosure c args'
+    JLProc c -> applyClosure args' c
     _ -> lift $ throwE JLNotAProcedure
