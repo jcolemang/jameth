@@ -4,10 +4,10 @@ module JLEval where
 import Control.Monad
 import JLTypes
 import Control.Monad.Trans.State
-import Control.Monad.Trans.Either
+import Control.Monad.Trans.Maybe
+import Control.Monad.Trans.Class
+import Control.Monad.Trans.Except
 import Data.Map
-
-
 
 
 -- | Primitive procudures
@@ -16,65 +16,71 @@ jlAdd2 (JLInt a) (JLInt b) = return . JLInt $ a + b
 jlAdd2 (JLNum a) (JLInt b) = return . JLNum $ a + fromInteger b
 jlAdd2 (JLInt a) (JLNum b) = return . JLNum $ fromInteger a + b
 jlAdd2 (JLNum a) (JLNum b) = return . JLNum $ a + b
-jlAdd2 _ _ = left JLUndefined
+jlAdd2 _ _ = throwE JLUndefined
 
+jlAdd :: [JLValue] -> Evaluation
 jlAdd [] = return $ JLInt 0
 jlAdd [x@(JLInt _)] = return x
 jlAdd [x@(JLNum _)] = return x
-jlAdd nums = foldM jlAdd2 (JLInt 0) nums
-
-
+jlAdd nums = lift $ foldM jlAdd2 (JLInt 0) nums
 
 
 -- | Helpers
 
-booleanValue :: JLValue m -> Bool
+booleanValue :: JLValue -> Bool
 booleanValue (JLBool False) = False
 booleanValue _ = False
 
 
-initialEnvironment :: (Monad m) => Environment m
-initialEnvironment = fromList
+initialEnvironment :: Environment
+initialEnvironment = GlobalEnv . fromList $
   [ ("+", JLProc $ JLClosure jlAdd) ]
 
-initialState :: (Monad m) => EvaluationState m
+initialState :: EvaluationState
 initialState = EvaluationState
   { _environment = initialEnvironment }
 
 
--- applyClosure :: JLClosure m -> [JLValue m] -> EitherT EvaluationError (StateT ()) (JLValue m)
-applyClosure (JLProc (JLClosure f)) args = f args
+applyClosure :: JLClosure -> [JLValue] -> Evaluation
+applyClosure (JLClosure f) = f
+
+
+lookupEnv :: (Monad m) => String -> Environment -> MaybeT m JLValue
+lookupEnv x (LocalEnv m parent) =
+  case Data.Map.lookup x m of
+    Nothing -> lookupEnv x parent
+    Just val -> return val
+lookupEnv x (GlobalEnv m) =
+  case Data.Map.lookup x m of
+    Nothing -> mzero
+    Just val -> return val
+
+
 
 
 -- | Actual Evaluation
 
-evalProgramT :: (Monad m)
-             => JLProgram m
-             -> EitherT EvaluationError (StateT (EvaluationState m) m) (JLValue m)
+evalProgramT :: JLProgram -> Evaluation
 evalProgramT (JLProgram forms) =
   foldM (\_ next -> evalForm next) JLVoid forms
 
-evalProgram :: (Monad m) => JLProgram m -> m (Either EvaluationError (JLValue m))
+evalProgram :: JLProgram -> IO (Either EvaluationError JLValue)
 evalProgram code =
   let result = evalProgramT code
-  in flip evalStateT initialState $ runEitherT result
+  in runExceptT $ evalStateT result initialState
 
 
-
-
-evalForm :: (Monad m)
-         => JLForm m
-         -> EitherT EvaluationError (StateT (EvaluationState m) m) (JLValue m)
+evalForm :: JLForm
+         -> Evaluation
 evalForm (JLFormExp expr) = evalExpression expr
 
 
-evalExpression :: (Monad m)
-               => JLExpression m
-               -> EitherT EvaluationError (StateT (EvaluationState m) m) (JLValue m)
+evalExpression :: JLExpression -> Evaluation
 evalExpression (JLValue val _) =
   return val
-evalExpression (JLVar _ _) =
-  return . JLProc . JLClosure $ jlAdd
+evalExpression (JLVar x _) = do
+  e <- gets _environment
+  lift $ maybeToExceptT JLUndefined (lookupEnv x e)
 evalExpression (JLQuote _ _) =
   undefined
 evalExpression (JLLambda _) =
@@ -92,7 +98,6 @@ evalExpression (JLOneIf condexp thenexp _) = do
 evalExpression (JLApp f args _) = do
   f' <- evalExpression f
   args' <- mapM evalExpression args
-  applyClosure f' args'
-  -- case applyClosure f' args' of
-  --   Left e -> left e
-  --   Right val -> return val
+  case f' of
+    JLProc c -> applyClosure c args'
+    _ -> lift $ throwE JLNotAProcedure

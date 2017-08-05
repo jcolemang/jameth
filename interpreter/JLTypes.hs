@@ -4,54 +4,58 @@ module JLTypes where
 import Data.Map
 import Text.Parsec
 import Control.Monad.Trans.State
-import Control.Monad.Trans.Either
+import Control.Monad.Trans.Except
 
 
 -- | Evaluation Data types
 
-type Environment m = Map String (JLValue m)
+type Evaluation = StateT EvaluationState (ExceptT EvaluationError IO) JLValue
 
-data EvaluationState m = EvaluationState
-  { _environment :: Environment m
+data Environment
+  = GlobalEnv (Map String JLValue)
+  | LocalEnv (Map String JLValue) Environment
+
+data EvaluationState = EvaluationState
+  { _environment :: Environment
   }
 
 
 -- | Formal Syntax
 
-data JLProgram m
-  = JLProgram [JLForm m]
+data JLProgram
+  = JLProgram [JLForm]
   deriving (Show)
 
-data JLForm m
-  = JLFormExp (JLExpression m)
+data JLForm
+  = JLFormExp JLExpression
   deriving (Show)
 
-data JLValue m
+data JLValue
   = JLStr  String
   | JLBool Bool
   | JLInt  Integer
   | JLNum  Double
-  | JLProc (JLClosure m)
+  | JLProc JLClosure
   | JLVoid
   deriving (Show, Eq)
 
-data JLClosure m
-  = JLClosure ([JLValue m] -> EitherT EvaluationError (StateT (EvaluationState m) m) (JLValue m))
+data JLClosure
+  = JLClosure ([JLValue] -> Evaluation)
 
-instance Show (JLClosure m) where
+instance Show JLClosure where
   show _ = "<closure>"
 
-instance Eq (JLClosure m) where
+instance Eq JLClosure where
   _ == _ = False
 
-data JLExpression m
-  = JLValue  (JLValue m) SourcePos
+data JLExpression
+  = JLValue  JLValue SourcePos
   | JLVar    String SourcePos
   | JLQuote  String SourcePos
   | JLLambda SourcePos
-  | JLTwoIf  (JLExpression m) (JLExpression m)   (JLExpression m) SourcePos
-  | JLOneIf  (JLExpression m) (JLExpression m)   SourcePos
-  | JLApp    (JLExpression m) [JLExpression m] SourcePos
+  | JLTwoIf  JLExpression JLExpression   JLExpression SourcePos
+  | JLOneIf  JLExpression JLExpression   SourcePos
+  | JLApp    JLExpression [JLExpression] SourcePos
   deriving (Show)
 
 
@@ -72,4 +76,5 @@ data SyntaxError
 data EvaluationError
   = JLEvalError
   | JLUndefined
+  | JLNotAProcedure
   deriving (Show)
