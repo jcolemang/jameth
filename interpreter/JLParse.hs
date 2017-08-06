@@ -69,7 +69,7 @@ parseVariableDef = do
 parseExpression :: Parser JLExpression
 parseExpression = do
   pos <- getPosition
-  flip JLValue pos <$> try parseConstant
+  flip JLValue (SP pos) <$> try parseConstant
   <|> try parseVariable
   <|> try parseIf -- same start as application
   <|> try parseLambda
@@ -140,7 +140,7 @@ parseVariable :: Parser JLExpression
 parseVariable = do
   pos <- getPosition
   iden <- parseIdentifier
-  return $ JLVar iden pos
+  return . JLVar iden $ SP pos
 
 
 -- | <quote> --> (quote <datum>) | '<datum>
@@ -160,7 +160,7 @@ parseLambda = do
   forms <- try parseFormals <* spaces
   body <- parseBody
   _ <- spaces >> char ')'
-  return $ JLLambda forms body pos
+  return . JLLambda forms body $ SP pos
 
 
 parseFormals :: Parser JLFormals
@@ -215,7 +215,7 @@ parseTwoIf = do
   ifthen <- parseExpression <* spaces
   ifelse <- parseExpression <* spaces
   _ <- char ')'
-  return $ JLTwoIf cond ifthen ifelse pos
+  return . JLTwoIf cond ifthen ifelse $ SP pos
 
 parseOneIf :: Parser JLExpression
 parseOneIf = do
@@ -225,7 +225,7 @@ parseOneIf = do
   cond <- parseExpression <* spaces
   ifthen <- parseExpression <* spaces
   _ <- char ')'
-  return $ JLOneIf cond ifthen pos
+  return . JLOneIf cond ifthen $ SP pos
 
 
 
@@ -256,4 +256,4 @@ parseApplication = do
   f <- parseExpression <* spaces
   args <- sepEndBy parseExpression spaces
   _ <- char ')'
-  return $ JLApp f args pos
+  return . JLApp f args $ SP pos

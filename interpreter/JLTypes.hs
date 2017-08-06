@@ -22,6 +22,11 @@ data EvaluationState = EvaluationState
   { _environment :: Environment
   }
 
+data JLSourcePos
+  = SP SourcePos
+  | Primitive
+  deriving (Show, Eq)
+
 
 -- | Formal Syntax
 
@@ -47,13 +52,13 @@ data JLValue
   | JLBool Bool
   | JLInt  Integer
   | JLNum  Double
-  | JLProc JLClosure
+  | JLProc JLClosure JLSourcePos
   | JLList [JLValue]
   | JLVoid
   deriving (Show, Eq)
 
 data JLClosure
-  = JLClosure JLFormals JLBody SourcePos
+  = JLClosure JLFormals JLBody JLSourcePos
   | JLPrimitive ([JLValue] -> Evaluation)
 
 instance Show JLClosure where
@@ -63,13 +68,13 @@ instance Eq JLClosure where
   _ == _ = False
 
 data JLExpression
-  = JLValue  JLValue      SourcePos
-  | JLVar    String       SourcePos
-  | JLQuote  String       SourcePos
-  | JLLambda JLFormals    JLBody         SourcePos
-  | JLTwoIf  JLExpression JLExpression   JLExpression SourcePos
-  | JLOneIf  JLExpression JLExpression   SourcePos
-  | JLApp    JLExpression [JLExpression] SourcePos
+  = JLValue  JLValue      JLSourcePos
+  | JLVar    String       JLSourcePos
+  | JLQuote  String       JLSourcePos
+  | JLLambda JLFormals    JLBody         JLSourcePos
+  | JLTwoIf  JLExpression JLExpression   JLExpression JLSourcePos
+  | JLOneIf  JLExpression JLExpression   JLSourcePos
+  | JLApp    JLExpression [JLExpression] JLSourcePos
   deriving (Show)
 
 data JLFormals
@@ -98,10 +103,11 @@ data SyntaxError
 
 
 data EvaluationError
-  = JLEvalError
-  | JLUndefined
-  | JLNotAProcedure
-  | JLBadArgumentLength
+  = JLEvalError         JLSourcePos
+  | JLUndefined         JLSourcePos
+  | JLTypeError         JLSourcePos
+  | JLNotAProcedure     JLSourcePos
+  | JLBadArgumentLength JLSourcePos
   deriving (Show)
 
 makeLenses ''EvaluationState

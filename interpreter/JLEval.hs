@@ -17,7 +17,7 @@ jlAdd2 (JLInt a) (JLInt b) = return . JLInt $ a + b
 jlAdd2 (JLNum a) (JLInt b) = return . JLNum $ a + fromInteger b
 jlAdd2 (JLInt a) (JLNum b) = return . JLNum $ fromInteger a + b
 jlAdd2 (JLNum a) (JLNum b) = return . JLNum $ a + b
-jlAdd2 _ _ = throwE JLUndefined
+jlAdd2 _ _ = throwE $ JLTypeError undefined
 
 jlAdd :: [JLValue] -> Evaluation
 jlAdd [] = return $ JLInt 0
@@ -35,7 +35,7 @@ booleanValue _ = False
 
 initialEnvironment :: Environment
 initialEnvironment = GlobalEnv . fromList $
-  [ ("+", JLProc $ JLPrimitive jlAdd) ]
+  [ ("+", JLProc (JLPrimitive jlAdd) Primitive) ]
 
 pushEnv :: (Monad m)
         => (Environment -> Environment)
@@ -65,7 +65,7 @@ bindArguments (JLSymbolFormal s) values  =
 bindArguments (JLFormals ss) values =
   if length ss == length values
   then return $ fromList (zip ss values)
-  else throwE JLBadArgumentLength
+  else throwE $ JLBadArgumentLength undefined
 bindArguments (JLImproperFormals f mid l) values =
   let (vf, vl) = splitAt (length (f:mid)) values
       most = zip (f:mid) vf
@@ -123,13 +123,13 @@ evalForm (JLFormExp expr) = evalExpression expr
 evalExpression :: JLExpression -> Evaluation
 evalExpression (JLValue val _) =
   return val
-evalExpression (JLVar x _) = do
+evalExpression (JLVar x s) = do
   e <- gets _environment
-  lift $ maybeToExceptT JLUndefined (lookupEnv x e)
+  lift $ maybeToExceptT (JLUndefined s) (lookupEnv x e)
 evalExpression (JLQuote _ _) =
   undefined
 evalExpression (JLLambda formals body p) =
-  return . JLProc $ JLClosure formals body p
+  return $ JLProc (JLClosure formals body p) p
 evalExpression (JLTwoIf condexp thenexp elseexp _) = do
   condVal <- evalExpression condexp
   if booleanValue condVal
@@ -144,5 +144,5 @@ evalExpression (JLApp f args _) = do
   f' <- evalExpression f
   args' <- mapM evalExpression args
   case f' of
-    JLProc c -> applyClosure args' c
-    _ -> lift $ throwE JLNotAProcedure
+    JLProc c _ -> applyClosure args' c
+    _ -> lift . throwE $ JLNotAProcedure undefined
