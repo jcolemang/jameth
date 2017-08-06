@@ -37,6 +37,19 @@ initialEnvironment :: Environment
 initialEnvironment = GlobalEnv . fromList $
   [ ("+", JLProc $ JLPrimitive jlAdd) ]
 
+pushEnv :: (Monad m)
+        => (Environment -> Environment)
+        -> StateT EvaluationState m ()
+pushEnv e = modify $ over environment e
+
+popEnv :: (Monad m)
+       =>  StateT EvaluationState m ()
+popEnv =
+  let f e = case e of
+              g@(GlobalEnv _) -> g
+              LocalEnv _ p -> p
+  in modify $ over environment f
+
 
 initialState :: EvaluationState
 initialState = EvaluationState
@@ -64,8 +77,8 @@ applyClosure :: [JLValue] -> JLClosure -> Evaluation
 applyClosure vals (JLPrimitive f) = f vals
 applyClosure vals (JLClosure formals body _) = do
   args <- lift $ bindArguments formals vals
-  modify $ over environment (LocalEnv args)
-  evalBody body
+  pushEnv (LocalEnv args)
+  evalBody body <* popEnv
 
 
 lookupEnv :: (Monad m) => String -> Environment -> MaybeT m JLValue
