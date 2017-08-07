@@ -5,6 +5,17 @@ import JLTypes
 import Text.ParserCombinators.Parsec
 import Control.Monad.Trans.Either
 
+-- | Helpers
+
+whitespace =
+  space <|> newline <|> tab
+
+whitespaces =
+  many whitespace
+
+whitespaces1 =
+  whitespace >> whitespaces
+
 -- | Public API
 
 parseJL :: (Monad m) => String -> EitherT ParseError m JLProgram
@@ -16,7 +27,7 @@ parseJL =
 
 parseProgram :: Parser JLProgram
 parseProgram =
-  spaces *> (JLProgram <$> many parseForm) <* spaces
+  whitespaces *> (JLProgram <$> many parseForm) <* whitespaces
 
 
 -- | <form> --> <definition> | <expression>
@@ -48,10 +59,10 @@ parseDefinition =
 
 parseVariableDef :: Parser JLVariableDefinition
 parseVariableDef = do
-  _ <- char '(' >> spaces >> string "define" >> spaces
-  iden <- parseIdentifier <* spaces
+  _ <- char '(' >> whitespaces >> string "define" >> whitespaces
+  iden <- parseIdentifier <* whitespaces
   body <- parseExpression
-  _ <- spaces >> char ')'
+  _ <- whitespaces >> char ')'
   return $ JLDefine iden body
 
 
@@ -155,11 +166,11 @@ parseQuote =
 
 parseLambda :: Parser JLExpression
 parseLambda = do
-  _ <- char '(' >> spaces >> string "lambda" >> spaces
   pos <- getPosition
-  forms <- try parseFormals <* spaces
+  _ <- char '(' >> whitespaces >> string "lambda" >> whitespaces
+  forms <- try parseFormals <* whitespaces
   body <- parseBody
-  _ <- spaces >> char ')'
+  _ <- whitespaces >> char ')'
   return . JLLambda forms body $ SP pos
 
 
@@ -171,9 +182,9 @@ parseFormals =
 
 parseListFormals :: Parser JLFormals
 parseListFormals = do
-  _ <- char '(' >> spaces
-  forms <- sepEndBy parseIdentifier spaces
-  _ <- spaces >> char ')'
+  _ <- char '(' >> whitespaces
+  forms <- sepEndBy parseIdentifier whitespaces
+  _ <- whitespaces >> char ')'
   return $ JLFormals forms
 
 parseSymbolFormals :: Parser JLFormals
@@ -182,20 +193,20 @@ parseSymbolFormals =
 
 parseImproperFormals :: Parser JLFormals
 parseImproperFormals = do
-  _ <- char '(' >> spaces
-  ffirst <- parseIdentifier <* spaces
+  _ <- char '(' >> whitespaces
+  ffirst <- parseIdentifier <* whitespaces
   frest <- many parseIdentifier
-  _ <- spaces >> char '.' >> spaces
+  _ <- whitespaces >> char '.' >> whitespaces
   flast <- parseIdentifier
-  _ <- spaces >> char ')'
+  _ <- whitespaces >> char ')'
   return $ JLImproperFormals ffirst frest flast
 
 
 parseBody :: Parser JLBody
 parseBody = do
-  defs <- sepEndBy (try parseDefinition) spaces
-  fexp <- parseExpression <* spaces
-  restExps <- sepEndBy parseExpression spaces
+  defs <- sepEndBy (try parseDefinition) whitespaces
+  fexp <- parseExpression <* whitespaces
+  restExps <- sepEndBy parseExpression whitespaces
   return $ JLBody defs (fexp, restExps)
 
 
@@ -209,21 +220,21 @@ parseIf
 
 parseTwoIf :: Parser JLExpression
 parseTwoIf = do
-  _ <- char '(' >> spaces >> string "if" >> spaces
   pos <- getPosition
-  cond <- parseExpression <* spaces
-  ifthen <- parseExpression <* spaces
-  ifelse <- parseExpression <* spaces
+  _ <- char '(' >> whitespaces >> string "if" >> whitespaces
+  cond <- parseExpression <* whitespaces
+  ifthen <- parseExpression <* whitespaces
+  ifelse <- parseExpression <* whitespaces
   _ <- char ')'
   return . JLTwoIf cond ifthen ifelse $ SP pos
 
 parseOneIf :: Parser JLExpression
 parseOneIf = do
-  _ <- char '(' >> spaces
-  _ <- string "if" >> spaces
   pos <- getPosition
-  cond <- parseExpression <* spaces
-  ifthen <- parseExpression <* spaces
+  _ <- char '(' >> whitespaces
+  _ <- string "if" >> whitespaces
+  cond <- parseExpression <* whitespaces
+  ifthen <- parseExpression <* whitespaces
   _ <- char ')'
   return . JLOneIf cond ifthen $ SP pos
 
@@ -251,9 +262,9 @@ parseIdentifier = do
 
 parseApplication :: Parser JLExpression
 parseApplication = do
-  _ <- char '(' >> spaces
   pos <- getPosition
-  f <- parseExpression <* spaces
-  args <- sepEndBy parseExpression spaces
+  _ <- char '(' >> whitespaces
+  f <- parseExpression <* whitespaces
+  args <- sepEndBy parseExpression whitespaces
   _ <- char ')'
   return . JLApp f args $ SP pos
