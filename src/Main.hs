@@ -11,9 +11,11 @@ main :: IO ()
 main = do
   print "~~~~~~ JAMETH ~~~~~"
   args <- getArgs
-  -- let args = ["hello"]
   print args
-  trees <- runEitherT $ mapM parseJL args
+  code <- if head args == "--file"
+          then (:[]) <$> readFile (args !! 1)
+          else return args
+  trees <- runEitherT $ mapM parseJL code
   print trees
   result <- mapM (mapM evalProgram) trees
   print result
