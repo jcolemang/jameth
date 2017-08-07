@@ -4,8 +4,16 @@ module JLParse where
 import JLTypes
 import Text.ParserCombinators.Parsec
 import Control.Monad.Trans.Either
+import Data.List
 
 -- | Helpers
+
+removeComments :: String -> String
+removeComments s =
+  case elemIndex ';' s of
+    Nothing -> s
+    Just i -> take i s
+
 
 whitespace =
   space <|> newline <|> tab
@@ -20,7 +28,7 @@ whitespaces1 =
 
 parseJL :: (Monad m) => String -> EitherT ParseError m JLProgram
 parseJL =
-  hoistEither . parse (parseProgram <* eof) ""
+  hoistEither . parse (parseProgram <* eof) "" . unlines . map removeComments . lines
 
 
 -- | <program> --> <form>*
