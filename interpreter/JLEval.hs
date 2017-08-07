@@ -35,7 +35,7 @@ booleanValue _ = False
 
 initialEnvironment :: Environment
 initialEnvironment = GlobalEnv . fromList $
-  [ ("+", JLProc (JLPrimitive jlAdd) Primitive) ]
+  [ ("+", JLProc $ JLPrimitive jlAdd) ]
 
 pushEnv :: (Monad m)
         => (Environment -> Environment)
@@ -59,13 +59,13 @@ initialState = EvaluationState
 bindArguments :: (Monad m)
               => JLFormals
               -> [JLValue]
-              -> ExceptT EvaluationError m (Map String JLValue)
+              -> ExceptT (JLSourcePos -> JLSourcePos -> EvaluationError) m (Map String JLValue)
 bindArguments (JLSymbolFormal s) values  =
   return $ singleton s (JLList values)
 bindArguments (JLFormals ss) values =
   if length ss == length values
   then return $ fromList (zip ss values)
-  else throwE $ JLBadArgumentLength undefined
+  else throwE JLBadNumArgs
 bindArguments (JLImproperFormals f mid l) values =
   let (vf, vl) = splitAt (length (f:mid)) values
       most = zip (f:mid) vf
@@ -73,10 +73,10 @@ bindArguments (JLImproperFormals f mid l) values =
   in return $ fromList (mappend most rest)
 
 
-applyClosure :: [JLValue] -> JLClosure -> Evaluation
-applyClosure vals (JLPrimitive f) = f vals
-applyClosure vals (JLClosure formals body _) = do
-  args <- lift $ bindArguments formals vals
+applyClosure :: [JLValue] -> JLClosure -> JLSourcePos -> Evaluation
+applyClosure vals (JLPrimitive f) sp = f vals
+applyClosure vals (JLClosure formals body sp) sp' = do
+  args <- lift $ withExceptT (\e -> e sp sp') $ bindArguments formals vals
   pushEnv (LocalEnv args)
   evalBody body <* popEnv
 
@@ -129,7 +129,7 @@ evalExpression (JLVar x s) = do
 evalExpression (JLQuote _ _) =
   undefined
 evalExpression (JLLambda formals body p) =
-  return $ JLProc (JLClosure formals body p) p
+  return $ JLProc (JLClosure formals body p)
 evalExpression (JLTwoIf condexp thenexp elseexp _) = do
   condVal <- evalExpression condexp
   if booleanValue condVal
@@ -140,9 +140,9 @@ evalExpression (JLOneIf condexp thenexp _) = do
   if booleanValue condVal
     then evalExpression thenexp
     else return JLVoid
-evalExpression (JLApp f args _) = do
+evalExpression (JLApp f args sp) = do
   f' <- evalExpression f
   args' <- mapM evalExpression args
   case f' of
-    JLProc c _ -> applyClosure args' c
+    JLProc c -> applyClosure args' c sp
     _ -> lift . throwE $ JLNotAProcedure undefined

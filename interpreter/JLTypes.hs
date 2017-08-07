@@ -52,7 +52,7 @@ data JLValue
   | JLBool Bool
   | JLInt  Integer
   | JLNum  Double
-  | JLProc JLClosure JLSourcePos
+  | JLProc JLClosure
   | JLList [JLValue]
   | JLVoid
   deriving (Show, Eq)
@@ -107,7 +107,7 @@ data EvaluationError
   | JLUndefined         JLSourcePos
   | JLTypeError         JLSourcePos
   | JLNotAProcedure     JLSourcePos
-  | JLBadArgumentLength JLSourcePos
+  | JLBadNumArgs        JLSourcePos JLSourcePos
   deriving (Show)
 
 makeLenses ''EvaluationState
