@@ -14,12 +14,12 @@ import Control.Lens
 
 type Evaluation = StateT EvaluationState (ExceptT EvaluationError IO) JLValue
 
-data Environment
+data ValueEnvironment
   = GlobalEnv (Map String JLValue)
-  | LocalEnv (Map String JLValue) Environment
+  | LocalEnv (Map String JLValue) ValueEnvironment
 
 data EvaluationState = EvaluationState
-  { _environment :: Environment
+  { _environment :: ValueEnvironment
   }
 
 data JLSourcePos
@@ -58,7 +58,7 @@ data JLValue
   deriving (Show, Eq)
 
 data JLClosure
-  = JLClosure JLFormals JLBody JLSourcePos
+  = JLClosure JLFormals JLBody ValueEnvironment JLSourcePos
   | JLPrimitive ([JLValue] -> Evaluation)
 
 instance Show JLClosure where

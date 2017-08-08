@@ -33,22 +33,30 @@ booleanValue (JLBool False) = False
 booleanValue _ = False
 
 
-initialEnvironment :: Environment
+initialEnvironment :: ValueEnvironment
 initialEnvironment = GlobalEnv . fromList $
   [ ("+", JLProc $ JLPrimitive jlAdd) ]
 
 pushEnv :: (Monad m)
-        => (Environment -> Environment)
+        => (ValueEnvironment -> ValueEnvironment)
         -> StateT EvaluationState m ()
 pushEnv e = modify $ over environment e
 
+putEnv :: (Monad m)
+       => ValueEnvironment
+       -> StateT EvaluationState m ()
+putEnv e = modify $ over environment (const e)
+
 popEnv :: (Monad m)
-       =>  StateT EvaluationState m ()
+       => StateT EvaluationState m ()
 popEnv =
   let f e = case e of
               g@(GlobalEnv _) -> g
               LocalEnv _ p -> p
   in modify $ over environment f
+
+getEnv :: (Monad m) => StateT EvaluationState m ValueEnvironment
+getEnv = gets (view environment)
 
 
 initialState :: EvaluationState
@@ -74,14 +82,15 @@ bindArguments (JLImproperFormals f mid l) values =
 
 
 applyClosure :: [JLValue] -> JLClosure -> JLSourcePos -> Evaluation
-applyClosure vals (JLPrimitive f) sp = f vals
-applyClosure vals (JLClosure formals body sp) sp' = do
+applyClosure vals (JLPrimitive f) _ = f vals
+applyClosure vals (JLClosure formals body env sp) sp' = do
   args <- lift $ withExceptT (\e -> e sp sp') $ bindArguments formals vals
-  pushEnv (LocalEnv args)
-  evalBody body <* popEnv
+  currEnv <- getEnv
+  putEnv $ LocalEnv args env
+  evalBody body <* putEnv currEnv
 
 
-lookupEnv :: (Monad m) => String -> Environment -> MaybeT m JLValue
+lookupEnv :: (Monad m) => String -> ValueEnvironment -> MaybeT m JLValue
 lookupEnv x (LocalEnv m parent) =
   case Data.Map.lookup x m of
     Nothing -> lookupEnv x parent
@@ -105,14 +114,12 @@ evalProgram code =
 
 evalBody :: JLBody -> Evaluation
 evalBody (JLBody defs (fexp, frest)) = do
-  foldM (\_ d -> evalDefinition d) JLVoid defs
+  _ <- foldM (\_ d -> evalDefinition d) JLVoid defs
   foldM (\_ e -> evalExpression e) JLVoid (fexp:frest)
 
 evalDefinition :: JLDefinition -> Evaluation
 evalDefinition =
   undefined
-
-
 
 
 evalForm :: JLForm
@@ -128,8 +135,9 @@ evalExpression (JLVar x s) = do
   lift $ maybeToExceptT (JLUndefined s) (lookupEnv x e)
 evalExpression (JLQuote _ _) =
   undefined
-evalExpression (JLLambda formals body p) =
-  return $ JLProc (JLClosure formals body p)
+evalExpression (JLLambda formals body p) = do
+  env <- getEnv
+  return $ JLProc (JLClosure formals body env p)
 evalExpression (JLTwoIf condexp thenexp elseexp _) = do
   condVal <- evalExpression condexp
   if booleanValue condVal

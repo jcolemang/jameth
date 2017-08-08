@@ -27,8 +27,9 @@ whitespaces1 =
 -- | Public API
 
 parseJL :: (Monad m) => String -> EitherT ParseError m JLProgram
-parseJL =
-  hoistEither . parse (parseProgram <* eof) "" . unlines . map removeComments . lines
+parseJL code =
+  let noComments = unlines $ map removeComments (lines code)
+  in hoistEither $ parse (parseProgram <* eof) "jameth" noComments
 
 
 -- | <program> --> <form>*
