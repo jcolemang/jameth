@@ -13,6 +13,7 @@ library
   exposed-modules:     JLParse
                      , JLEval
                      , JLTypes
+                     , JLTokenize
   build-depends:       base >= 4.7 && < 5
                      , parsec
                      , either
@@ -25,9 +26,10 @@ library
 executable interpreter
   hs-source-dirs:      src
   main-is:             Main.hs
+  ghc-options:         -Wall
   build-depends:       base >= 4.7 && < 5
                      , jameth
-                     , either
+                     , transformers
   other-modules:
   default-language:    Haskell2010
 

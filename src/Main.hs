@@ -1,10 +1,10 @@
 module Main where
 
-import JLParse
+-- import JLParse
+import JLTokenize
 import System.Environment
-import Control.Monad.Trans.Either
-import JLEval
 import System.IO
+import Control.Monad.Trans.Except
 
 
 main :: IO ()
@@ -15,8 +15,11 @@ main = do
   code <- if head args == "--file"
           then (:[]) <$> readFile (args !! 1)
           else return args
-  trees <- runEitherT $ mapM parseJL code
+  print "Removed comments"
+  print $ map removeAllComments code
+  print "Tokenized"
+  trees <- runExceptT $ mapM readJL code
   print trees
-  result <- mapM (mapM evalProgram) trees
-  print result
+  -- result <- mapM (mapM evalProgram) trees
+  -- print result
   hFlush stdout
