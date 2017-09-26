@@ -1,9 +1,10 @@
-# jameth
+# This code is bad
 
-In my quest to prove to Buffalo that Haskell is useful I am implementing a
-Scheme interpreter. This is also an excuse to learn `parsec`, and hopefully
-plenty of stuff about monads that I can use to clear a room.
+But I think it is really interesting!
 
-## Cool ideas:
-- Generate parsec code from prolog
-- Interpreter as an Arrow instance
+I am using this as a playground for learning about interpreters, Scheme, and
+programming with Haskell.
+
+Long term, I would like this to be an actual working Scheme interpreter with
+better support for debugging tools and better error messages. I would also like
+to learn some about static analysis and nanopass compilers.
