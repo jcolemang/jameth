@@ -1,47 +1,59 @@
 
 module Scheme.JLParse where
 
--- import Scheme.JLGlobalEnvironment
 import Scheme.JLTokenize
 import Scheme.JLTypes
+import Scheme.JLParsingTypes
+import {-# SOURCE #-} Scheme.JLPrimitiveSyntax
+import Scheme.JLPrimitiveProcs
 
--- import Data.Maybe
-import Data.Map hiding (foldl)
+import Data.Map hiding (foldl, map)
 import Control.Monad.State
 import Control.Monad.Except
 import Control.Monad.Trans.Except
-import Control.Lens
+import Control.Monad.Identity
 
 import Debug.Trace
 
 
-findIdentifier :: String -> JLEnvironment -> Maybe BoundValue
-findIdentifier iden (JLEnvironment m parent) =
+invalidSyntax :: JLTree -> Maybe String -> JLSourcePos -> ParseMonad a
+invalidSyntax _ Nothing sp =
+  ParseMonad . throwE $ JLInvalidSyntax "" sp
+invalidSyntax _ (Just s) sp =
+  ParseMonad . throwE $ JLInvalidSyntax s sp
+
+unboundVariable :: JLTree -> String -> JLSourcePos -> ParseMonad a
+unboundVariable _ name sp =
+  ParseMonad . throwE $ JLUndefinedVariable name sp
+
+
+findIdentifier :: String -> JLEnvironment BoundValue -> Maybe BoundValue
+findIdentifier iden (JLEnv m parent) =
   case Data.Map.lookup iden m of
     v@(Just _) -> v
     Nothing -> iden `findIdentifier` parent
-findIdentifier _ JLEmptyEnvironment =
+findIdentifier _ JLEmptyEnv =
   Nothing
 
 extendEnvironment :: [(String, BoundValue)]
-                  -> JLEnvironment
-                  -> JLEnvironment
+                  -> JLEnvironment BoundValue
+                  -> JLEnvironment BoundValue
 extendEnvironment ps env =
   let m = fromList ps
-  in JLEnvironment m env
+  in JLEnv m env
 
 setInEnvironment :: String
                  -> BoundValue
-                 -> JLEnvironment
-                 -> JLEnvironment
-setInEnvironment name v (JLEnvironment vs parent) =
-  let newMap = insert name v (trace ("Old Map: " ++ show vs) vs)
-  in trace ("Calling set with " ++ name) JLEnvironment newMap parent
+                 -> JLEnvironment BoundValue
+                 -> JLEnvironment BoundValue
+setInEnvironment name v (JLEnv vs parent) =
+  let newMap = insert name v vs
+  in JLEnv newMap parent
 setInEnvironment _ _ _ = undefined
 
 findInEnvironments :: String
-                   -> LocalEnvironment
-                   -> GlobalEnvironment
+                   -> LocalEnvironment BoundValue
+                   -> GlobalEnvironment BoundValue
                    -> Maybe BoundValue
 findInEnvironments iden (LocalEnv local) (GlobalEnv global) =
   case findIdentifier iden local of
@@ -55,100 +67,85 @@ getNums vals =
                      _ -> Nothing
   in mapM maybeNum vals
 
-initialGlobal :: GlobalEnvironment
+getPairs :: JLTree -> Maybe [(String, JLTree)]
+getPairs (JLSList [] _) =
+  return []
+getPairs (JLSList (JLSList [JLId s _, assgn] _:rest) sp) = do
+  ps <- getPairs (JLSList rest sp)
+  return $ (s, assgn):ps
+getPairs _ = Nothing
+
+getIds :: [JLTree] -> Maybe [String]
+getIds [] =
+  Just []
+getIds (JLId s _:rest) = do
+  traceShowM "Here"
+  r <- getIds rest
+  return $ s:r
+getIds _ =
+  Nothing
+
+getSourcePos :: JLTree -> JLSourcePos
+getSourcePos (JLVal _ sp) = sp
+getSourcePos (JLId _ sp) = sp
+getSourcePos (JLSList _ sp) = sp
+
+initialGlobal :: GlobalEnvironment BoundValue
 initialGlobal =
-  GlobalEnv . flip JLEnvironment JLEmptyEnvironment . fromList $
-  [ ("+", BVal . JLProc . JLPrimitive
-      $ \vs ->
-          case getNums vs of
-            Just nums ->
-              return . JLConst . JLNum $ sum nums
-            Nothing ->
-              EvaluationMonad $
-              lift $ throwE (JLTypeError Primitive)
-    )
-  , ("define", BSyntax . BuiltIn "define" $
-      \ts ->
-        case ts of
-          JLSList [_, JLId x _, jlexp] _ -> do
-            traceM "Expanding define form"
-            traceM $ "Defining " ++ x
-            gEnv <- get
-            traceM "Before modify"
-            traceShowM gEnv
-            modify' $ \(ParseState l (GlobalEnv e)) ->
-                        ParseState l (GlobalEnv $ setInEnvironment x EmptySlot e)
-            traceM "After modify"
-            gEnv' <- get
-            traceShowM gEnv'
-            pexp <- parseJLForm jlexp
-            return . JLFormDef . JLVarDef $ JLDefine x pexp
-          _ ->
-            undefined
-    )
-  ]
+  -- GlobalEnv . flip JLEnv JLEmptyEnv . fromList $
+  undefined
 
 runJLParse :: String -> Either JLParseError JLProgram
 runJLParse s =
   let initialState = ParseState
-                     { localEnv = LocalEnv JLEmptyEnvironment
+                     { localEnv = LocalEnv JLEmptyEnv
                      , globalEnv = initialGlobal
                      }
   in do
     tree <- readJL s
     fst $ runIdentity (runStateT (runExceptT (runParser (parse tree)))
-                       initialState)
+                                 initialState)
 
 parse :: [JLTree] -> ParseMonad JLProgram
 parse ts =
-  let parseJLForm_ e = trace ("Calling parseJLForm on " ++ show e) (parseJLForm e)
-  in
-    JLProgram <$> mapM parseJLForm_ ts
+  JLProgram <$> mapM parseJLForm ts
 
 expandSyntax :: JLSyntax -> JLTree -> ParseMonad JLForm
 expandSyntax (BuiltIn _ f) = f
--- expandSyntax _ _ = undefined
 
 parseJLForm :: JLTree -> ParseMonad JLForm
 parseJLForm (JLVal v p) =
-  traceM "Found a value" >>
-  return . JLFormExp $ JLValue (JLConst v) p
-parseJLForm (JLId x sp) = do
+  return $ JLValue (JLConst v) p
+parseJLForm tree@(JLId x sp) = do
   local <- localEnv <$> get
   global <- globalEnv <$> get
-  traceM ("Current Env: " ++ show global)
   case findInEnvironments x local global of
     Nothing ->
-      ParseMonad . throwE $ JLUndefinedVariable x sp
-    Just (BSyntax _) ->
-      ParseMonad . throwE $ JLInvalidSyntax sp
+      unboundVariable tree x sp
+    Just (BSyntax (BuiltIn name _)) ->
+      invalidSyntax tree (Just name) sp
     Just _ ->
-      return . JLFormExp $ JLVar x sp
-parseJLForm expr@(JLSList (JLId x idsp:rest) sp) = do
+      return $ JLVar x sp
+parseJLForm tree@(JLSList [] sp) =
+  invalidSyntax tree Nothing sp
+parseJLForm tree@(JLSList (JLId x idsp:rest) sp) = do
   local <- localEnv <$> get
   global <- globalEnv <$> get
-  return $ trace ("Current Env: " ++ show global) ()
   case findInEnvironments x local global of
     Nothing ->
-      ParseMonad . throwE $ JLUndefinedVariable x sp
+      unboundVariable tree x sp
     Just val ->
       case val of
-        BVal _ -> do
-          traceM "Found a value"
+        BVal -> do
           rexps <- mapM parseJLForm rest
           rx <- parseJLForm $ JLId x idsp
-          return . JLFormExp $ JLApp rx rexps sp
+          return $ JLApp rx rexps sp
         BSyntax s ->
-          traceM "Found syntax" >>
-          expandSyntax s expr
-        _ -> undefined
-parseJLForm _ =
-  undefined
-
-
-  -- exps <- mapM parseJLForm xs
-  -- case listToMaybe exps of
-  --   Nothing ->
-  --     ParseMonad . throwE $ JLInvalidSyntax sp
-  --   Just h ->
-  --     return (JLFormExp (JLApp h (tail exps) sp))
+          expandSyntax s tree
+        _ -> do
+          traceShowM val
+          undefined
+parseJLForm (JLSList (f:rest) sp) = do
+  fform <- parseJLForm f
+  rforms <- mapM parseJLForm rest
+  return $ JLApp fform rforms sp

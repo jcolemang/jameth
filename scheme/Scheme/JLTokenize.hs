@@ -1,15 +1,13 @@
 
 module Scheme.JLTokenize (readJL,
-                          JLTokenizeError,
                          ) where
 
+import Scheme.JLParsingTypes
 import Scheme.JLTypes
 
 import Text.ParserCombinators.Parsec
 import Data.List
-import Control.Monad.Trans.Except
 import Control.Monad
-
 
 readJL :: String -> Either JLParseError [JLTree]
 readJL =
@@ -43,7 +41,9 @@ sp :: Parser a -> Parser a
 sp x = whitespaces *> x <* whitespaces
 
 parens :: Parser a -> Parser a
-parens = between (char '(') (char ')')
+parens p =
+  between (char '(') (char ')') p
+  <|> between (char '[') (char ']') p
 
 
 parseTree :: Parser JLTree
@@ -53,6 +53,7 @@ parseTree =
              con <- parseConstant
              return $ JLVal con (SP p))
   <|> sp parseIdentifier
+  <|> sp parseQuotedList
 
 parseIdInitial :: Parser Char
 parseIdInitial =
@@ -86,6 +87,12 @@ parseList = do
   p <- getPosition
   pts <- parens (many parseTree)
   return $ JLSList pts (SP p)
+
+parseQuotedList :: Parser JLTree
+parseQuotedList = do
+  p <- getPosition
+  pts <- string "'" >> parens (many parseTree)
+  return $ JLSList [JLId "quote" (SP p), JLSList pts (SP p)] (SP p)
 
 parseConstant :: Parser JLConstant
 parseConstant

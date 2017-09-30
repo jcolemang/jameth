@@ -1,4 +1,4 @@
-# This code is bad
+* This code is bad
 
 But I think it is really interesting!
 
@@ -8,3 +8,5 @@ programming with Haskell.
 Long term, I would like this to be an actual working Scheme interpreter with
 better support for debugging tools and better error messages. I would also like
 to learn some about static analysis and nanopass compilers.
+
+* Notes
