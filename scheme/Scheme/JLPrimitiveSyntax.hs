@@ -5,9 +5,9 @@ import Scheme.JLParsingTypes
 import Scheme.JLTypes
 import Scheme.JLParse
 
-primitiveSyntax :: [(String, BoundValue)]
+primitiveSyntax :: [(String, JLSyntax)]
 primitiveSyntax =
-  [ ("define", BSyntax . BuiltIn "define" $
+  [ ("define", BuiltIn "define" $
       \ts ->
         case ts of
           JLSList [_, JLId x _, jlexp] _ -> do
@@ -22,7 +22,7 @@ primitiveSyntax =
           _ ->
             error "An error was made in the parser. Please report this as a bug."
     )
-  , ("lambda", BSyntax . BuiltIn "lambda" $
+  , ("lambda", BuiltIn "lambda" $
     \ts ->
       case ts of
         JLSList [_, JLSList ids idsSp, bodies] sp ->
@@ -38,7 +38,7 @@ primitiveSyntax =
         _ ->
           undefined
     )
-  , ("let", BSyntax . BuiltIn "let" $
+  , ("let", BuiltIn "let" $
     \ts@(JLSList (_:assgns:bs) sp) ->
       case getPairs assgns of
         Just ps -> do
@@ -53,7 +53,7 @@ primitiveSyntax =
         Nothing ->
           invalidSyntax ts (Just "let") sp
     )
-  , ("if", BSyntax . BuiltIn "if" $
+  , ("if", BuiltIn "if" $
     \x ->
       case x of
         (JLSList [_, test, true, false] sp) -> do

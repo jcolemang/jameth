@@ -12,6 +12,7 @@ import Control.Monad.State
 import Control.Monad.Except
 import Control.Monad.Trans.Except
 import Control.Monad.Identity
+import Control.Arrow (second)
 
 import Debug.Trace
 
@@ -92,8 +93,11 @@ getSourcePos (JLSList _ sp) = sp
 
 initialGlobal :: GlobalEnvironment BoundValue
 initialGlobal =
-  -- GlobalEnv . flip JLEnv JLEmptyEnv . fromList $
-  undefined
+  let stuff = map (\(s, _) -> (s, BVal)) primitiveProcedures
+              ++
+              map (second BSyntax) primitiveSyntax
+  in GlobalEnv $ JLEnv (fromList stuff) JLEmptyEnv
+
 
 runJLParse :: String -> Either JLParseError JLProgram
 runJLParse s =

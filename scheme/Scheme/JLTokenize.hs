@@ -53,7 +53,7 @@ parseTree =
              con <- parseConstant
              return $ JLVal con (SP p))
   <|> sp parseIdentifier
-  <|> sp parseQuotedList
+  <|> sp parseQuote
 
 parseIdInitial :: Parser Char
 parseIdInitial =
@@ -88,11 +88,11 @@ parseList = do
   pts <- parens (many parseTree)
   return $ JLSList pts (SP p)
 
-parseQuotedList :: Parser JLTree
-parseQuotedList = do
+parseQuote :: Parser JLTree
+parseQuote = do
   p <- getPosition
-  pts <- string "'" >> parens (many parseTree)
-  return $ JLSList [JLId "quote" (SP p), JLSList pts (SP p)] (SP p)
+  t <- string "'" >> parseTree
+  return $ JLSList [JLId "quote" (SP p), t] (SP p)
 
 parseConstant :: Parser JLConstant
 parseConstant
