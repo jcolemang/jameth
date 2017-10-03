@@ -9,12 +9,14 @@ module Analysis.AnalysisTypes
   )
 where
 
+import Scheme.JLTypes
+
 import Control.Monad.Writer
 import Control.Monad.Identity
 
 data LogMessage
-  = Warning String
-  | Error String
+  = Warning String JLSourcePos
+  | Error String JLSourcePos
   deriving (Show)
 
 newtype AnalysisMonad a

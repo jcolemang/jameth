@@ -5,9 +5,13 @@ import Analysis.AnalysisTypes
 import Scheme.JLTypes
 
 appendAnalysis :: JLForm -> AnalysisMonad ()
-appendAnalysis (JLApp (JLVar "append" _)
+appendAnalysis x@(JLApp (JLVar "append" asp)
                 (JLApp (JLVar "list" _)
-                 (_:_) _:_) sp) =
-  tell [Warning $ "Try just writing cons at position " ++ show sp]
+                 [first] _:rest@_) sp) =
+  let betterVersion =
+        JLApp (JLVar "cons" asp) (first:rest) sp
+      message = "Instead of `" ++ displayForm x ++
+                "`, why not write `" ++ displayForm betterVersion ++ "`?"
+  in tell [Warning message sp]
 appendAnalysis _ =
   return ()

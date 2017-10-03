@@ -13,13 +13,13 @@ primitiveSyntax =
   [ ("define", BuiltIn "define" $
       \ts ->
         case ts of
-          JLSList [_, JLId x _, jlexp] _ -> do
+          JLSList [_, JLId x _, jlexp] sp -> do
             modify' $ \(ParseState l (GlobalEnv e)) ->
                         ParseState l (GlobalEnv $ setInEnvironment x BVal e)
             pexp <- parseJLForm jlexp
             modify' $ \(ParseState l (GlobalEnv e)) ->
                         ParseState l (GlobalEnv $ setInEnvironment x BVal e)
-            return $ JLDefine x pexp
+            return $ JLDefine x pexp sp
           JLSList _ sp ->
             invalidSyntax ts (Just "define") sp
           _ ->

@@ -14,8 +14,6 @@ import Control.Monad.Trans.Except
 import Control.Monad.Identity
 import Control.Arrow (second)
 
-import Debug.Trace
-
 
 invalidSyntax :: JLTree -> Maybe String -> JLSourcePos -> ParseMonad a
 invalidSyntax _ Nothing sp =
@@ -80,7 +78,6 @@ getIds :: [JLTree] -> Maybe [String]
 getIds [] =
   Just []
 getIds (JLId s _:rest) = do
-  traceShowM "Here"
   r <- getIds rest
   return $ s:r
 getIds _ =
@@ -146,8 +143,7 @@ parseJLForm tree@(JLSList (JLId x idsp:rest) sp) = do
           return $ JLApp rx rexps sp
         BSyntax s ->
           expandSyntax s tree
-        _ -> do
-          traceShowM val
+        _ ->
           undefined
 parseJLForm (JLSList (f:rest) sp) = do
   fform <- parseJLForm f
