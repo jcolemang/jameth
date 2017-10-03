@@ -48,7 +48,7 @@ data JLParseError
   = JLParseError JLSourcePos
   | JLUndefinedVariable String JLSourcePos
   | JLInvalidSyntax String JLSourcePos
-  deriving (Show)
+  deriving (Show, Eq)
 
 -- | Formal Syntax
 

@@ -1,7 +1,11 @@
 
-import ParseTest
+import Parse.ParseConstants
+import Parse.ParseQuote
+
 import Test.HUnit
-import Control.Monad
 
 main :: IO ()
-main = mapM_ runTestTT tests
+main = mapM_ runTestTT
+       ( Parse.ParseConstants.tests
+       ++ Parse.ParseQuote.tests
+       )
