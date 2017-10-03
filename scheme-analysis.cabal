@@ -54,6 +54,7 @@ test-suite scheme-analysis-test
                      , HUnit
                      , QuickCheck
                      , scheme-analysis
-  other-modules:       Parse.ParseConstants
-                     , Parse.ParseQuote
+  other-modules:       Parse.ParseConstantsTest
+                     , Parse.ParseQuoteTest
+                     , Analysis.AppendAnalysisTest
   default-language:    Haskell2010

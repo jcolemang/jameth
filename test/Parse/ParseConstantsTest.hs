@@ -1,5 +1,5 @@
 
-module Parse.ParseConstants where
+module Parse.ParseConstantsTest where
 
 import Scheme.JLParse
 import Scheme.JLTypes

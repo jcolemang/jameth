@@ -1,5 +1,5 @@
 
-module Parse.ParseQuote where
+module Parse.ParseQuoteTest where
 
 import Scheme.JLTypes
 import Scheme.JLParse

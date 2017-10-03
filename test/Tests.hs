@@ -1,11 +1,11 @@
 
-import Parse.ParseConstants
-import Parse.ParseQuote
+import Parse.ParseConstantsTest
+import Parse.ParseQuoteTest
 
 import Test.HUnit
 
 main :: IO ()
 main = mapM_ runTestTT
-       ( Parse.ParseConstants.tests
-       ++ Parse.ParseQuote.tests
+       ( Parse.ParseConstantsTest.tests
+       ++ Parse.ParseQuoteTest.tests
        )
