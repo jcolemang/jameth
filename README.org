@@ -1,13 +1,10 @@
-* This code is bad
+* Scheme Analysis
 
-But I think it is really interesting!
+This is a library I am writing for a functional programming design class. My
+main intention is to create a reasonable static analysis library to be used by
+students current at Rose-Hulman. I would ideally also like to create an
+interpreter to go along with it to simplify Scheme's debugging experience.
 
-I am using this as a playground for learning about interpreters, Scheme, and
-programming with Haskell.
-
-Long term, I would like this to be an actual working Scheme interpreter with
-better support for debugging tools and better error messages. I would also like
-to learn some about static analysis and nanopass compilers.
-
-* Notes
-
+Note that I am using this in part as a playground for learning about Haskell,
+static analysis, and interpreters. If you see bad code I would love to hear how
+you would improve it.
