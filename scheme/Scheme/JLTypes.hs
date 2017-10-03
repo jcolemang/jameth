@@ -35,9 +35,15 @@ data JLForm
   | JLApp JLForm [JLForm] JLSourcePos
   deriving (Show)
 
+data Arity
+  = Exactly Int
+  | AnyNum
+  | AtLeast Int
+  | Cases [Arity]
+
 data JLClosure
   = JLClosure JLFormals [JLForm] (JLEnvironment JLValue) JLSourcePos
-  | JLPrimitive
+  | JLPrimitive Arity
 
 instance Show JLClosure where
   show _ = "<closure>"
