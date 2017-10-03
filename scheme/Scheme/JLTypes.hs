@@ -43,7 +43,7 @@ data Arity
 
 data JLClosure
   = JLClosure JLFormals [JLForm] (JLEnvironment JLValue) JLSourcePos
-  | JLPrimitive Arity
+  | JLPrimitive String Arity
 
 instance Show JLClosure where
   show _ = "<closure>"
