@@ -26,7 +26,7 @@ data JLProgram
 data JLForm
   = JLValue JLValue JLSourcePos
   | JLVar String JLSourcePos
-  | JLQuote String JLSourcePos
+  | JLQuote JLValue JLSourcePos
   | JLLambda JLFormals [JLForm] JLSourcePos
   | JLLet [(String, JLForm)] [JLForm] JLSourcePos
   | JLTwoIf JLForm JLForm JLForm JLSourcePos

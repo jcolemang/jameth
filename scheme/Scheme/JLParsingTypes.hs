@@ -14,8 +14,6 @@ where
 
 import Scheme.JLTypes
 
-import Data.Map
-import Text.Parsec
 import Control.Monad.State
 import Control.Monad.Except
 import Control.Monad.Identity

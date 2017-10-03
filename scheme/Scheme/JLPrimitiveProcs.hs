@@ -1,24 +1,24 @@
 
 module Scheme.JLPrimitiveProcs where
 
-import Scheme.JLEvaluationTypes
+import Scheme.JLTypes
 
-primitiveProcedures :: [(String, PrimitiveProcedure)]
+primitiveProcedures :: [(String, JLClosure)]
 primitiveProcedures =
-  [ ("+", undefined)
-  , ("=", undefined)
-  , ("*", undefined)
-  , ("-", undefined)
-  , ("/", undefined)
-  , (">=", undefined)
-  , ("cons", undefined)
-  , ("equal?", undefined)
-  , ("car", undefined)
-  , ("cdr", undefined)
-  , ("length", undefined)
-  , ("sqrt", undefined)
-  , ("cadr", undefined)
-  , ("list", undefined)
-  , ("andmap", undefined)
-  , ("zero?", undefined)
+  [ ("+",      JLPrimitive)
+  , ("=",      JLPrimitive)
+  , ("*",      JLPrimitive)
+  , ("-",      JLPrimitive)
+  , ("/",      JLPrimitive)
+  , (">=",     JLPrimitive)
+  , ("cons",   JLPrimitive)
+  , ("equal?", JLPrimitive)
+  , ("car",    JLPrimitive)
+  , ("cdr",    JLPrimitive)
+  , ("length", JLPrimitive)
+  , ("sqrt",   JLPrimitive)
+  , ("cadr",   JLPrimitive)
+  , ("list",   JLPrimitive)
+  , ("andmap", JLPrimitive)
+  , ("zero?",  JLPrimitive)
   ]

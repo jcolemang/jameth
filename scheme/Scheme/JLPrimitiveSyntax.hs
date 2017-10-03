@@ -5,6 +5,9 @@ import Scheme.JLParsingTypes
 import Scheme.JLTypes
 import Scheme.JLParse
 
+whoops :: a
+whoops = error "An error was made in the parser. Please report this as a bug."
+
 primitiveSyntax :: [(String, JLSyntax)]
 primitiveSyntax =
   [ ("define", BuiltIn "define" $
@@ -20,12 +23,13 @@ primitiveSyntax =
           JLSList _ sp ->
             invalidSyntax ts (Just "define") sp
           _ ->
-            error "An error was made in the parser. Please report this as a bug."
+            whoops
+
     )
   , ("lambda", BuiltIn "lambda" $
     \ts ->
       case ts of
-        JLSList [_, JLSList ids idsSp, bodies] sp ->
+        JLSList [_, JLSList ids _, bodies] sp ->
           case getIds ids of
             Just jids -> do
               let test = map (\x -> (x, BVal)) jids
@@ -61,15 +65,31 @@ primitiveSyntax =
           ptrue <- parseJLForm true
           pfalse <- parseJLForm false
           return $ JLTwoIf ptest ptrue pfalse sp
+        (JLSList [_, test, true] sp) -> do
+          ptest <- parseJLForm test
+          ptrue <- parseJLForm true
+          return $ JLOneIf ptest ptrue sp
+        JLSList _ sp ->
+          invalidSyntax x (Just "if") sp
         _ ->
-          undefined
+          whoops
     )
-  -- , ("quote", BSyntax . BuiltIn "quote" $
-  --   \x ->
-  --     case x of
-  --       JLSList (_:vals) sp ->
-  --         return $ JLQuoted (JLSList vals sp) sp
-  --       a ->
-  --         invalidSyntax x (Just "quote") (getSourcePos a)
-  --   )
+  , ("quote", BuiltIn "quote" $
+    let quote x =
+          case x of
+            JLSList vals _ ->
+              JLList $ map quote vals
+            JLVal val _ ->
+              JLConst val
+            JLId s _ ->
+              JLConst $ JLSymbol s
+    in \x ->
+         case x of
+           JLSList [_, val] sp ->
+             return . flip JLQuote sp . quote $ val
+           JLSList _ sp ->
+             invalidSyntax x (Just "quote") sp
+           _ ->
+             whoops
+    )
   ]
