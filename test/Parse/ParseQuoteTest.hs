@@ -7,7 +7,7 @@ import Scheme.JLParse
 import Test.HUnit
 import Data.Either
 
-getFirstForm (Right (JLProgram (x:_))) = Just x
+getFirstForm (Right (Program (x:_))) = Just x
 getFirstForm _ = Nothing
 
 getQuoted (JLQuote x _) = Just x

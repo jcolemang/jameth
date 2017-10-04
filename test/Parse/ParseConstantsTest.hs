@@ -7,8 +7,8 @@ import Scheme.JLTypes
 import Test.HUnit
 
 
-getConstant :: Either t JLProgram -> Maybe JLConstant
-getConstant (Right (JLProgram [JLValue (JLConst x) _])) = Just x
+getConstant :: Either t Program -> Maybe Constant
+getConstant (Right (Program [Value (JLConst x) _])) = Just x
 getConstant _ = Nothing
 
 
