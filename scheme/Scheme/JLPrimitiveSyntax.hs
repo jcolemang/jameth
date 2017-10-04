@@ -14,11 +14,13 @@ primitiveSyntax =
       \ts ->
         case ts of
           JLSList [_, JLId x _, jlexp] sp -> do
-            modify' $ \(ParseState l (GlobalEnv e)) ->
-                        ParseState l (GlobalEnv $ setInEnvironment x BVal e)
+            modify' $ \(ParseState l g) ->
+                        let (l', g') = putInEnv x BVal (globalReference "define") l g
+                        in ParseState l' g'
             pexp <- parseJLForm jlexp
-            modify' $ \(ParseState l (GlobalEnv e)) ->
-                        ParseState l (GlobalEnv $ setInEnvironment x BVal e)
+            modify' $ \(ParseState l g) ->
+                        let (l', g') = putInEnv x BVal (globalReference "define") l g
+                        in ParseState l' g'
             return $ JLDefine x pexp sp
           JLSList _ sp ->
             invalidSyntax ts (Just "define") sp
@@ -33,8 +35,8 @@ primitiveSyntax =
           case getIds ids of
             Just jids -> do
               let test = map (\x -> (x, BVal)) jids
-              modify $ \(ParseState (LocalEnv l) g) ->
-                         let newEnv = (LocalEnv $ extendEnvironment test l)
+              modify $ \(ParseState l g) ->
+                         let newEnv = extendEnv test l
                          in ParseState newEnv g
               parseJLForm bodies
             Nothing ->
@@ -48,9 +50,9 @@ primitiveSyntax =
         Just ps -> do
           exps <- mapM (parseJLForm . snd) ps
           let vars = zip (map fst ps) exps
-          modify $ \(ParseState (LocalEnv l) g) ->
+          modify $ \(ParseState l g) ->
             let parsedPairs = map (\(x, _) -> (x, BVal)) ps
-                newEnv = (LocalEnv $ extendEnvironment parsedPairs l)
+                newEnv = extendEnv parsedPairs l
             in ParseState newEnv g
           bodies <- mapM parseJLForm bs
           return $ JLLet vars bodies sp

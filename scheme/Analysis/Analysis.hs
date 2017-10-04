@@ -9,15 +9,15 @@ import Analysis.AnalysisTypes
 import Analysis.Analyzers.AppendAnalysis
 import Scheme.JLTypes
 
-programAnalysis :: JLProgram -> [LogMessage]
+programAnalysis :: Program -> [LogMessage]
 programAnalysis p =
   undefined
 
 
-formRecurse :: (JLForm -> AnalysisMonad ()) -> JLForm -> AnalysisMonad ()
-formRecurse f x@(JLValue _ _) =
+formRecurse :: (Form -> AnalysisMonad ()) -> Form -> AnalysisMonad ()
+formRecurse f x@(Value _ _) =
   f x
-formRecurse f x@(JLVar _ _) =
+formRecurse f x@(JLVar {}) =
   f x
 formRecurse f x@(JLQuote _ _) =
   f x
@@ -43,8 +43,8 @@ formRecurse f x@(JLApp f1 fs _) = do
 
 
 
-formAnalysis :: JLProgram -> AnalysisMonad ()
-formAnalysis (JLProgram forms) =
+formAnalysis :: Program -> AnalysisMonad ()
+formAnalysis (Program forms) =
   let analyzers =
         [ appendAnalysis
         ]

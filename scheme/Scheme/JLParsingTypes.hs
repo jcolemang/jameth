@@ -21,9 +21,9 @@ import Control.Monad.Identity
 -- | Lexing sort of things
 
 data JLTree
-  = JLVal JLConstant JLSourcePos
-  | JLId String JLSourcePos
-  | JLSList [JLTree] JLSourcePos
+  = JLVal Constant SourcePos
+  | JLId String SourcePos
+  | JLSList [JLTree] SourcePos
   deriving (Show)
 
 data BoundValue
@@ -45,15 +45,15 @@ data ParseState
   } deriving (Show)
 
 data JLParseError
-  = JLParseError JLSourcePos
-  | JLUndefinedVariable String JLSourcePos
-  | JLInvalidSyntax String JLSourcePos
+  = JLParseError SourcePos
+  | JLUndefinedVariable String SourcePos
+  | JLInvalidSyntax String SourcePos
   deriving (Show, Eq)
 
 -- | Formal Syntax
 
 data JLSyntax
-  = BuiltIn String (JLTree -> ParseMonad JLForm)
+  = BuiltIn String (JLTree -> ParseMonad Form)
 
 instance Show JLSyntax where
   show (BuiltIn n _) = "#< " ++ n ++ " >"

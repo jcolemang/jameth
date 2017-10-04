@@ -1,10 +1,28 @@
 
-module Scheme.JLTypes where
+module Scheme.JLTypes
+  ( displayForm
+  , getAddress
+  , isValue, isVar, isQuote, isLambda, isLet, isTwoIf, isOneIf, isDefine, isApp
+  , extendEnv, createEnv, putInEnv, createGlobalEnv, createEmptyEnv
+
+  , Closure (..)
+  , Arity (..)
+  , Constant (..)
+  , SourcePos (..)
+  , LocalEnvironment
+  , GlobalEnvironment
+  , Form (..)
+  , Value (..)
+  , Program (..)
+
+  -- Should be removed
+  , globalReference
+  )
+where
 
 import Data.Map hiding (map)
-import Text.Parsec (SourcePos)
 
-data JLConstant
+data Constant
   = JLStr  String
   | JLBool Bool
   | JLInt  Integer
@@ -13,7 +31,7 @@ data JLConstant
   | JLVoid
   deriving (Show, Eq)
 
-displayConstant :: JLConstant -> String
+displayConstant :: Constant -> String
 displayConstant (JLStr s) = show s
 displayConstant (JLBool True) = "#t"
 displayConstant (JLBool False) = "#f"
@@ -29,46 +47,90 @@ data JLFormals
   deriving (Show)
 
 displayFormals :: JLFormals -> String
-displayFormals formals =
+displayFormals _ =
   undefined
 
-data JLProgram
-  = JLProgram [JLForm]
+data Program
+  = Program [Form]
   deriving (Show)
 
-data JLForm
-  = JLValue JLValue JLSourcePos
-  | JLVar String JLSourcePos
-  | JLQuote JLValue JLSourcePos
-  | JLLambda JLFormals [JLForm] JLSourcePos
-  | JLLet [(String, JLForm)] [JLForm] JLSourcePos
-  | JLTwoIf JLForm JLForm JLForm JLSourcePos
-  | JLOneIf JLForm JLForm JLSourcePos
-  | JLDefine String JLForm JLSourcePos
-  | JLApp JLForm [JLForm] JLSourcePos
+newtype Depth = Depth Int
+              deriving (Show)
+newtype Index = Index Int
+              deriving (Show)
+
+data LexicalAddress
+  = Global String
+  | Bound Depth Index
+  deriving ( Show )
+
+-- TODO This should not be here
+globalReference :: String -> LexicalAddress
+globalReference = Global
+
+data Form
+  = Value Value SourcePos
+  | JLVar String LexicalAddress SourcePos
+  | JLQuote Value SourcePos
+  | JLLambda JLFormals [Form] SourcePos
+  | JLLet [(String, Form)] [Form] SourcePos
+  | JLTwoIf Form Form Form SourcePos
+  | JLOneIf Form Form SourcePos
+  | JLDefine String Form SourcePos
+  | JLApp Form [Form] SourcePos
   deriving (Show)
 
-displayForm :: JLForm -> String
-displayForm (JLValue val _) =
+isValue :: Form -> Bool
+isValue Value {} = True
+isValue _ = False
+
+isVar :: Form -> Bool
+isVar JLVar {} = True
+isVar _ = False
+
+isQuote :: Form -> Bool
+isQuote JLQuote {} = True
+isQuote _ = False
+
+isLambda :: Form -> Bool
+isLambda JLLambda {} = True
+isLambda _ = False
+
+isLet :: Form -> Bool
+isLet JLLet {} = True
+isLet _ = False
+
+isTwoIf :: Form -> Bool
+isTwoIf JLTwoIf {} = True
+isTwoIf _ = False
+
+isOneIf :: Form -> Bool
+isOneIf JLOneIf {} = True
+isOneIf _ = False
+
+isDefine :: Form -> Bool
+isDefine JLDefine {} = True
+isDefine _ = False
+
+isApp :: Form -> Bool
+isApp JLApp {} = True
+isApp _ = False
+
+displayForm :: Form -> String
+displayForm (Value val _) =
   displayValue val
-displayForm (JLVar name _) =
+displayForm (JLVar name _ _) =
   name
 displayForm (JLQuote val _) =
   "(quote " ++ show val ++ ")"
 displayForm (JLLambda formals bodies _) =
   let bs = unwords (map displayForm bodies)
   in "(lambda " ++ displayFormals formals ++ " " ++ bs ++ ")"
-displayForm (JLLet asgns bodies _) =
-  undefined
-displayForm (JLTwoIf cond thn els _) =
-  undefined
-displayForm (JLOneIf cond thn _) =
-  undefined
-displayForm (JLDefine def body _) =
-  undefined
 displayForm (JLApp f args _) =
   let as = unwords (map displayForm args)
   in "(" ++ displayForm f ++ " " ++ as ++ ")"
+displayForm _ =
+  undefined
 
 data Arity
   = Exactly Int
@@ -76,38 +138,97 @@ data Arity
   | AtLeast Int
   | Cases [Arity]
 
-data JLClosure
-  = JLClosure JLFormals [JLForm] (JLEnvironment JLValue) JLSourcePos
-  | JLPrimitive String Arity
+data Closure
+  = Closure JLFormals [Form] (LocalEnvironment Value) SourcePos
+  | Primitive String Arity
 
-instance Show JLClosure where
+instance Show Closure where
   show _ = "<closure>"
 
-data JLValue
-  = JLConst JLConstant
-  | JLProc JLClosure
-  | JLList [JLValue]
+data Value
+  = JLConst Constant
+  | JLProc Closure
+  | JLList [Value]
   deriving (Show, Eq)
 
-displayValue :: JLValue -> String
+displayValue :: Value -> String
 displayValue (JLConst c) = displayConstant c
 displayValue _ = undefined
 
-instance Eq JLClosure where
+instance Eq Closure where
   _ == _ = False
 
-data JLEnvironment a
-  = JLEnv (Map String a) (JLEnvironment a)
-  | JLEmptyEnv
+data LocalEnvironment a
+  = Env [(String, a)] (LocalEnvironment a)
+  | EmptyEnv
   deriving (Show)
 
-newtype GlobalEnvironment a = GlobalEnv (JLEnvironment a)
+putInEnv :: String
+         -> a
+         -> LexicalAddress
+         -> LocalEnvironment a
+         -> GlobalEnvironment a
+         -> (LocalEnvironment a, GlobalEnvironment a)
+putInEnv name datum (Bound (Depth 0) (Index i)) (Env ls parent) g =
+  ( Env (take (i-1) ls ++ [(name, datum)] ++ drop (i+1) ls) parent, g)
+putInEnv name datum (Bound (Depth i) idx) (Env ls parent) g =
+  let (nextLocal, nextGlobal) =
+        putInEnv name datum (Bound (Depth $ i - 1) idx) parent g
+  in (Env ls nextLocal, nextGlobal)
+putInEnv n datum (Global _) env (GlobalEnv m) =
+  (env, GlobalEnv $ insert n datum m)
+putInEnv _ _ _ _ _ =
+  error "A lexical addressing error occurred. Please report this as a bug."
+
+extendEnv :: [(String, a)]
+                  -> LocalEnvironment a
+                  -> LocalEnvironment a
+extendEnv = Env
+
+createEnv :: [(String, a)] -> LocalEnvironment a
+createEnv = flip extendEnv EmptyEnv
+
+createEmptyEnv :: LocalEnvironment a
+createEmptyEnv = EmptyEnv
+
+createGlobalEnv :: [(String, a)] -> GlobalEnvironment a
+createGlobalEnv = GlobalEnv . fromList
+
+getAddress :: String
+           -> LocalEnvironment a
+           -> GlobalEnvironment a
+           -> Maybe (a, LexicalAddress)
+getAddress iden local (GlobalEnv global) =
+  case findIdentifier iden 0 local of
+    Nothing ->
+      case Data.Map.lookup iden global of
+        Nothing -> Nothing
+        Just bv -> Just (bv, Global iden)
+    v@(Just _) -> v
+
+findIdentifier :: String
+               -> Int
+               -> LocalEnvironment a
+               -> Maybe (a, LexicalAddress)
+findIdentifier iden d (Env ls parent) =
+  case indexAndName iden 0 ls of
+    Just (idx, val) -> Just (val, Bound (Depth d) (Index idx))
+    Nothing -> findIdentifier iden (d+1) parent
+findIdentifier _ _ EmptyEnv =
+  Nothing
+
+indexAndName :: Eq a => a -> Int -> [(a, b)] -> Maybe (Int, b)
+indexAndName _ _ [] = Nothing
+indexAndName name i ((x, val):rest) =
+  if name == x
+  then Just (i, val)
+  else indexAndName name (i+1) rest
+
+
+newtype GlobalEnvironment a = GlobalEnv (Map String a)
   deriving ( Show )
 
-newtype LocalEnvironment a = LocalEnv (JLEnvironment a)
-  deriving ( Show )
-
-data JLSourcePos
-  = SP SourcePos
-  | Primitive
+data SourcePos
+  = SP Int Int
+  | PrimitiveSource
   deriving (Show, Eq)

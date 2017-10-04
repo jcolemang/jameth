@@ -15,8 +15,8 @@ import Control.Monad.Writer
 import Control.Monad.Identity
 
 data LogMessage
-  = Warning String JLSourcePos
-  | Error String JLSourcePos
+  = Warning String SourcePos
+  | Error String SourcePos
   deriving (Show)
 
 newtype AnalysisMonad a

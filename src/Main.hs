@@ -15,13 +15,12 @@ main = do
   args <- getArgs
   print args
   p <- parseRelFile (head args)
-  prog <- readSourceFile p
-  print prog
-  case prog of
+  src <- readSourceFile p
+  case src of
     err@(Left _) ->
       print err
-    Right p -> do
+    Right prog -> do
       print "Doing analysis"
-      print (analyze $ formAnalysis p)
+      print (analyze $ formAnalysis prog)
 
   hFlush stdout

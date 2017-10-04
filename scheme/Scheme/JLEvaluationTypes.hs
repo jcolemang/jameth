@@ -15,18 +15,18 @@ newtype EvaluationMonad a
   } deriving ( Functor, Applicative, Monad,
                MonadState EvaluationState, MonadError EvaluationError )
 
-type PrimitiveProcedure = [JLValue] -> EvaluationMonad JLValue
+type PrimitiveProcedure = [Value] -> EvaluationMonad Value
 
 data EvaluationError
-  = JLEvalError         JLSourcePos
-  | JLUndefined         JLSourcePos
-  | JLTypeError         JLSourcePos
-  | JLNotAProcedure     JLSourcePos
-  | JLBadNumArgs        JLSourcePos JLSourcePos
+  = JLEvalError         SourcePos
+  | JLUndefined         SourcePos
+  | JLTypeError         SourcePos
+  | JLNotAProcedure     SourcePos
+  | JLBadNumArgs        SourcePos SourcePos
   deriving (Show)
 
 data EvaluationState
   = EvalState
-  { localEnv :: LocalEnvironment JLValue
-  , globalEnv :: GlobalEnvironment JLValue
+  { localEnv :: LocalEnvironment Value
+  , globalEnv :: GlobalEnvironment Value
   } deriving (Show)
