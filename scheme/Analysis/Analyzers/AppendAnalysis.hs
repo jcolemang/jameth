@@ -5,11 +5,11 @@ import Analysis.AnalysisTypes
 import Scheme.JLTypes
 
 appendAnalysis :: Form -> AnalysisMonad ()
-appendAnalysis x@(JLApp (JLVar "append" _ asp)
-                (JLApp (JLVar "list" _ _)
+appendAnalysis x@(JLApp (Var "append" appendAddr asp)
+                (JLApp (Var "list" listAddr _)
                  [first] _:rest@_) sp) =
   let betterVersion =
-        JLApp (JLVar "cons" (globalReference "cons") asp) (first:rest) sp
+        JLApp (Var "cons" (globalReference "cons") asp) (first:rest) sp
       message = "Instead of `" ++ displayForm x ++
                 "`, why not write `" ++ displayForm betterVersion ++ "`?"
   in tell [Warning message sp]

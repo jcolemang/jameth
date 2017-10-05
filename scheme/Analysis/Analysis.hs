@@ -17,7 +17,7 @@ programAnalysis p =
 formRecurse :: (Form -> AnalysisMonad ()) -> Form -> AnalysisMonad ()
 formRecurse f x@(Value _ _) =
   f x
-formRecurse f x@(JLVar {}) =
+formRecurse f x@(Var {}) =
   f x
 formRecurse f x@(JLQuote _ _) =
   f x
@@ -40,8 +40,6 @@ formRecurse f x@(JLDefine _ form _) = do
 formRecurse f x@(JLApp f1 fs _) = do
   f x
   mapM_ (formRecurse f) (f1:fs)
-
-
 
 formAnalysis :: Program -> AnalysisMonad ()
 formAnalysis (Program forms) =

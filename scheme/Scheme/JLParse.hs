@@ -91,7 +91,7 @@ parseJLForm tree@(JLId x sp) = do
     Just (BSyntax (BuiltIn name _), _) ->
       invalidSyntax tree (Just name) sp
     Just (_, addr) ->
-      return $ JLVar x addr sp
+      return $ Var x addr sp
 parseJLForm tree@(JLSList [] sp) =
   invalidSyntax tree Nothing sp
 parseJLForm tree@(JLSList (JLId x idsp:rest) sp) = do

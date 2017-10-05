@@ -1,5 +1,8 @@
 .stack-work/
+auto/
+
 \.#*
+
 *.aux
 *.log
-auto/
+*.tix

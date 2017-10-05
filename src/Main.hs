@@ -7,6 +7,7 @@ import Analysis.Analysis
 import System.Environment
 import System.IO
 import Path
+import Data.IORef
 
 
 main :: IO ()
@@ -20,7 +21,11 @@ main = do
     err@(Left _) ->
       print err
     Right prog -> do
-      print "Doing analysis"
+      print prog
       print (analyze $ formAnalysis prog)
-
   hFlush stdout
+
+
+test :: IORef Int -> Int -> IO ()
+test ref i =
+  modifyIORef ref (+i)

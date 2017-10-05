@@ -1,7 +1,7 @@
 
 module Scheme.JLTypes
   ( displayForm
-  , getAddress
+  , getAddress, getValue
   , isValue, isVar, isQuote, isLambda, isLet, isTwoIf, isOneIf, isDefine, isApp
   , extendEnv, createEnv, putInEnv, createGlobalEnv, createEmptyEnv
 
@@ -17,6 +17,7 @@ module Scheme.JLTypes
 
   -- Should be removed
   , globalReference
+  , isGlobal
   )
 where
 
@@ -68,9 +69,13 @@ data LexicalAddress
 globalReference :: String -> LexicalAddress
 globalReference = Global
 
+isGlobal :: LexicalAddress -> Bool
+isGlobal (Global _) = True
+isGlobal _ = False
+
 data Form
   = Value Value SourcePos
-  | JLVar String LexicalAddress SourcePos
+  | Var String LexicalAddress SourcePos
   | JLQuote Value SourcePos
   | JLLambda JLFormals [Form] SourcePos
   | JLLet [(String, Form)] [Form] SourcePos
@@ -85,7 +90,7 @@ isValue Value {} = True
 isValue _ = False
 
 isVar :: Form -> Bool
-isVar JLVar {} = True
+isVar Var {} = True
 isVar _ = False
 
 isQuote :: Form -> Bool
@@ -119,7 +124,7 @@ isApp _ = False
 displayForm :: Form -> String
 displayForm (Value val _) =
   displayValue val
-displayForm (JLVar name _ _) =
+displayForm (Var name _ _) =
   name
 displayForm (JLQuote val _) =
   "(quote " ++ show val ++ ")"
@@ -205,6 +210,12 @@ getAddress iden local (GlobalEnv global) =
         Nothing -> Nothing
         Just bv -> Just (bv, Global iden)
     v@(Just _) -> v
+
+getValue :: LexicalAddress
+         -> LocalEnvironment a
+         -> GlobalEnvironment a
+         -> Maybe a
+getValue _ _ _ = undefined
 
 findIdentifier :: String
                -> Int

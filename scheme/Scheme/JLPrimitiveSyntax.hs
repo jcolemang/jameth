@@ -18,9 +18,9 @@ primitiveSyntax =
                         let (l', g') = putInEnv x BVal (globalReference "define") l g
                         in ParseState l' g'
             pexp <- parseJLForm jlexp
-            modify' $ \(ParseState l g) ->
-                        let (l', g') = putInEnv x BVal (globalReference "define") l g
-                        in ParseState l' g'
+            -- modify' $ \(ParseState l g) ->
+            --             let (l', g') = putInEnv x BVal (globalReference "define") l g
+            --             in ParseState l' g'
             return $ JLDefine x pexp sp
           JLSList _ sp ->
             invalidSyntax ts (Just "define") sp
