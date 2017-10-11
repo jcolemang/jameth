@@ -6,7 +6,7 @@ module Scheme.JLParsingTypes
   , BoundValue (..)
   , JLTree (..)
   , ParseState (..)
-  , JLSyntax (..)
+  , Syntax (..)
   , JLParseError (..)
   , ParseMonad (..)
   )
@@ -27,8 +27,10 @@ data JLTree
   deriving (Show)
 
 data BoundValue
-  = BVal
-  | BSyntax JLSyntax
+  = BVal Form
+  | Parameter
+  | BuiltIn String
+  | BSyntax Syntax
   | EmptySlot
   deriving ( Show )
 
@@ -52,8 +54,8 @@ data JLParseError
 
 -- | Formal Syntax
 
-data JLSyntax
-  = BuiltIn String (JLTree -> ParseMonad Form)
+data Syntax
+  = PrimitiveSyntax String (JLTree -> ParseMonad Form)
 
-instance Show JLSyntax where
-  show (BuiltIn n _) = "#< " ++ n ++ " >"
+instance Show Syntax where
+  show (PrimitiveSyntax n _) = "#< " ++ n ++ " >"

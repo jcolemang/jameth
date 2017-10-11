@@ -4,6 +4,7 @@ module Scheme.JLTypes
   , getAddress, getValue
   , isValue, isVar, isQuote, isLambda, isLet, isTwoIf, isOneIf, isDefine, isApp
   , extendEnv, createEnv, putInEnv, createGlobalEnv, createEmptyEnv
+  , getSource
 
   , Closure (..)
   , Arity (..)
@@ -12,8 +13,9 @@ module Scheme.JLTypes
   , LocalEnvironment
   , GlobalEnvironment
   , Form (..)
-  , Value (..)
+  , SchemeValue (..)
   , Program (..)
+  , Formals (..)
 
   -- Should be removed
   , globalReference
@@ -21,7 +23,7 @@ module Scheme.JLTypes
   )
 where
 
-import Data.Map hiding (map)
+import qualified Data.Map as Map
 
 data Constant
   = JLStr  String
@@ -41,13 +43,13 @@ displayConstant (JLNum num) = show num
 displayConstant (JLSymbol x) = x
 displayConstant JLVoid = "#<void>"
 
-data JLFormals
-  = JLSymbolFormal    String
-  | JLFormals         [String]
-  | JLImproperFormals String [String] String
+data Formals
+  = SymbolFormal    String
+  | Formals         [String]
+  | ImproperFormals String [String] String
   deriving (Show)
 
-displayFormals :: JLFormals -> String
+displayFormals :: Formals -> String
 displayFormals _ =
   undefined
 
@@ -74,16 +76,27 @@ isGlobal (Global _) = True
 isGlobal _ = False
 
 data Form
-  = Value Value SourcePos
+  = Value SchemeValue SourcePos
   | Var String LexicalAddress SourcePos
-  | JLQuote Value SourcePos
-  | JLLambda JLFormals [Form] SourcePos
-  | JLLet [(String, Form)] [Form] SourcePos
-  | JLTwoIf Form Form Form SourcePos
-  | JLOneIf Form Form SourcePos
-  | JLDefine String Form SourcePos
-  | JLApp Form [Form] SourcePos
+  | Quote SchemeValue SourcePos
+  | Lambda Formals [Form] SourcePos
+  | Let [(String, Form)] [Form] SourcePos
+  | TwoIf Form Form Form SourcePos
+  | OneIf Form Form SourcePos
+  | Define String Form SourcePos
+  | App Form [Form] SourcePos
   deriving (Show)
+
+getSource :: Form -> SourcePos
+getSource (Value _ sp) = sp
+getSource (Var _ _ sp) = sp
+getSource (Quote _ sp) = sp
+getSource (Lambda _ _ sp) = sp
+getSource (Let _ _ sp) = sp
+getSource (TwoIf _ _ _ sp) = sp
+getSource (OneIf _ _ sp) = sp
+getSource (Define _ _ sp) = sp
+getSource (App _ _ sp) = sp
 
 isValue :: Form -> Bool
 isValue Value {} = True
@@ -94,31 +107,31 @@ isVar Var {} = True
 isVar _ = False
 
 isQuote :: Form -> Bool
-isQuote JLQuote {} = True
+isQuote Quote {} = True
 isQuote _ = False
 
 isLambda :: Form -> Bool
-isLambda JLLambda {} = True
+isLambda Lambda {} = True
 isLambda _ = False
 
 isLet :: Form -> Bool
-isLet JLLet {} = True
+isLet Let {} = True
 isLet _ = False
 
 isTwoIf :: Form -> Bool
-isTwoIf JLTwoIf {} = True
+isTwoIf TwoIf {} = True
 isTwoIf _ = False
 
 isOneIf :: Form -> Bool
-isOneIf JLOneIf {} = True
+isOneIf OneIf {} = True
 isOneIf _ = False
 
 isDefine :: Form -> Bool
-isDefine JLDefine {} = True
+isDefine Define {} = True
 isDefine _ = False
 
 isApp :: Form -> Bool
-isApp JLApp {} = True
+isApp App {} = True
 isApp _ = False
 
 displayForm :: Form -> String
@@ -126,12 +139,12 @@ displayForm (Value val _) =
   displayValue val
 displayForm (Var name _ _) =
   name
-displayForm (JLQuote val _) =
+displayForm (Quote val _) =
   "(quote " ++ show val ++ ")"
-displayForm (JLLambda formals bodies _) =
+displayForm (Lambda formals bodies _) =
   let bs = unwords (map displayForm bodies)
   in "(lambda " ++ displayFormals formals ++ " " ++ bs ++ ")"
-displayForm (JLApp f args _) =
+displayForm (App f args _) =
   let as = unwords (map displayForm args)
   in "(" ++ displayForm f ++ " " ++ as ++ ")"
 displayForm _ =
@@ -144,19 +157,21 @@ data Arity
   | Cases [Arity]
 
 data Closure
-  = Closure JLFormals [Form] (LocalEnvironment Value) SourcePos
+  = Closure Formals [Form] (LocalEnvironment SchemeValue) SourcePos
   | Primitive String Arity
 
 instance Show Closure where
   show _ = "<closure>"
 
-data Value
+data SchemeValue
   = JLConst Constant
   | JLProc Closure
-  | JLList [Value]
+  | JLList [SchemeValue]
+  | Void
+  | Unbound
   deriving (Show, Eq)
 
-displayValue :: Value -> String
+displayValue :: SchemeValue -> String
 displayValue (JLConst c) = displayConstant c
 displayValue _ = undefined
 
@@ -181,13 +196,13 @@ putInEnv name datum (Bound (Depth i) idx) (Env ls parent) g =
         putInEnv name datum (Bound (Depth $ i - 1) idx) parent g
   in (Env ls nextLocal, nextGlobal)
 putInEnv n datum (Global _) env (GlobalEnv m) =
-  (env, GlobalEnv $ insert n datum m)
+  (env, GlobalEnv $ Map.insert n datum m)
 putInEnv _ _ _ _ _ =
   error "A lexical addressing error occurred. Please report this as a bug."
 
 extendEnv :: [(String, a)]
-                  -> LocalEnvironment a
-                  -> LocalEnvironment a
+          -> LocalEnvironment a
+          -> LocalEnvironment a
 extendEnv = Env
 
 createEnv :: [(String, a)] -> LocalEnvironment a
@@ -197,7 +212,7 @@ createEmptyEnv :: LocalEnvironment a
 createEmptyEnv = EmptyEnv
 
 createGlobalEnv :: [(String, a)] -> GlobalEnvironment a
-createGlobalEnv = GlobalEnv . fromList
+createGlobalEnv = GlobalEnv . Map.fromList
 
 getAddress :: String
            -> LocalEnvironment a
@@ -206,7 +221,7 @@ getAddress :: String
 getAddress iden local (GlobalEnv global) =
   case findIdentifier iden 0 local of
     Nothing ->
-      case Data.Map.lookup iden global of
+      case Map.lookup iden global of
         Nothing -> Nothing
         Just bv -> Just (bv, Global iden)
     v@(Just _) -> v
@@ -236,7 +251,7 @@ indexAndName name i ((x, val):rest) =
   else indexAndName name (i+1) rest
 
 
-newtype GlobalEnvironment a = GlobalEnv (Map String a)
+newtype GlobalEnvironment a = GlobalEnv (Map.Map String a)
   deriving ( Show )
 
 data SourcePos

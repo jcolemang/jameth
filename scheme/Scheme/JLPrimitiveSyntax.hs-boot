@@ -3,4 +3,4 @@ where
 
 import Scheme.JLParsingTypes
 
-primitiveSyntax :: [(String, JLSyntax)]
+primitiveSyntax :: [(String, Syntax)]

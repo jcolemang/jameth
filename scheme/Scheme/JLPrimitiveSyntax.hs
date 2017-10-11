@@ -8,35 +8,44 @@ import Scheme.JLParse
 whoops :: a
 whoops = error "An error was made in the parser. Please report this as a bug."
 
-primitiveSyntax :: [(String, JLSyntax)]
+-- Logic is repeated from the evaluation as the input values are very important
+-- in both cases. We can't really factor out the input datatypes.
+
+primitiveSyntax :: [(String, Syntax)]
 primitiveSyntax =
-  [ ("define", BuiltIn "define" $
+  [ ("define", PrimitiveSyntax "define" $
       \ts ->
         case ts of
           JLSList [_, JLId x _, jlexp] sp -> do
             modify' $ \(ParseState l g) ->
-                        let (l', g') = putInEnv x BVal (globalReference "define") l g
+                        let (l', g') =
+                              putInEnv x
+                                       EmptySlot
+                                       (globalReference x) l g
                         in ParseState l' g'
             pexp <- parseJLForm jlexp
-            -- modify' $ \(ParseState l g) ->
-            --             let (l', g') = putInEnv x BVal (globalReference "define") l g
-            --             in ParseState l' g'
-            return $ JLDefine x pexp sp
+            modify' $ \(ParseState l g) ->
+                        let (l', g') =
+                              putInEnv x
+                                       (BVal pexp)
+                                       (globalReference x) l g
+                        in ParseState l' g'
+            return $ Define x pexp sp
           JLSList _ sp ->
             invalidSyntax ts (Just "define") sp
           _ ->
             whoops
 
     )
-  , ("lambda", BuiltIn "lambda" $
+  , ("lambda", PrimitiveSyntax "lambda" $
     \ts ->
       case ts of
         JLSList [_, JLSList ids _, bodies] sp ->
           case getIds ids of
             Just jids -> do
-              let test = map (\x -> (x, BVal)) jids
+              let idens = map (\x -> (x, Parameter)) jids
               modify $ \(ParseState l g) ->
-                         let newEnv = extendEnv test l
+                         let newEnv = extendEnv idens l
                          in ParseState newEnv g
               parseJLForm bodies
             Nothing ->
@@ -44,39 +53,39 @@ primitiveSyntax =
         _ ->
           undefined
     )
-  , ("let", BuiltIn "let" $
+  , ("let", PrimitiveSyntax "let" $
     \ts@(JLSList (_:assgns:bs) sp) ->
       case getPairs assgns of
         Just ps -> do
           exps <- mapM (parseJLForm . snd) ps
           let vars = zip (map fst ps) exps
           modify $ \(ParseState l g) ->
-            let parsedPairs = map (\(x, _) -> (x, BVal)) ps
+            let parsedPairs = zip (fmap fst ps) (fmap BVal exps)
                 newEnv = extendEnv parsedPairs l
             in ParseState newEnv g
           bodies <- mapM parseJLForm bs
-          return $ JLLet vars bodies sp
+          return $ Let vars bodies sp
         Nothing ->
           invalidSyntax ts (Just "let") sp
     )
-  , ("if", BuiltIn "if" $
+  , ("if", PrimitiveSyntax "if" $
     \x ->
       case x of
         (JLSList [_, test, true, false] sp) -> do
           ptest <- parseJLForm test
           ptrue <- parseJLForm true
           pfalse <- parseJLForm false
-          return $ JLTwoIf ptest ptrue pfalse sp
+          return $ TwoIf ptest ptrue pfalse sp
         (JLSList [_, test, true] sp) -> do
           ptest <- parseJLForm test
           ptrue <- parseJLForm true
-          return $ JLOneIf ptest ptrue sp
+          return $ OneIf ptest ptrue sp
         JLSList _ sp ->
           invalidSyntax x (Just "if") sp
         _ ->
           whoops
     )
-  , ("quote", BuiltIn "quote" $
+  , ("quote", PrimitiveSyntax "quote" $
     let quote x =
           case x of
             JLSList vals _ ->
@@ -88,7 +97,7 @@ primitiveSyntax =
     in \x ->
          case x of
            JLSList [_, val] sp ->
-             return . flip JLQuote sp . quote $ val
+             return . flip Quote sp . quote $ val
            JLSList _ sp ->
              invalidSyntax x (Just "quote") sp
            _ ->

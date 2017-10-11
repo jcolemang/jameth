@@ -1,14 +1,13 @@
 module Main where
 
--- import Scheme.JLParse
 import Interpreter.JLReadSource
+import Scheme.JLEvaluationTypes
 import Analysis.Analysis
+import Analysis.AnalysisTypes
 
 import System.Environment
 import System.IO
 import Path
-import Data.IORef
-
 
 main :: IO ()
 main = do
@@ -22,10 +21,7 @@ main = do
       print err
     Right prog -> do
       print prog
-      print (analyze $ formAnalysis prog)
+      analysis <- runEvalT $ formAnalysis prog
+      mapM_ print analysis
+      -- return ()
   hFlush stdout
-
-
-test :: IORef Int -> Int -> IO ()
-test ref i =
-  modifyIORef ref (+i)
