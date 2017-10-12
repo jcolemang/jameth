@@ -1,5 +1,5 @@
 
-module Interpreter.JLReadSource where
+module Scheme.JLReadSource where
 
 import Scheme.JLTypes
 import Scheme.JLParsingTypes

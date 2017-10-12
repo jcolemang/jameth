@@ -14,14 +14,15 @@ primitiveSyntax =
       \ts ->
         case ts of
           JLSList [_, JLId x _, jlexp] sp -> do
-            modify' $ \(ParseState l g) ->
+            modify' $ \(ParseState l g lab) ->
                         let (l', g') = putInEnv x BVal (globalReference "define") l g
-                        in ParseState l' g'
+                        in ParseState l' g' lab
             pexp <- parseJLForm jlexp
             -- modify' $ \(ParseState l g) ->
             --             let (l', g') = putInEnv x BVal (globalReference "define") l g
             --             in ParseState l' g'
-            return $ JLDefine x pexp sp
+            l <- getLabel
+            return $ A (Ann sp l) (JLDefine x pexp)
           JLSList _ sp ->
             invalidSyntax ts (Just "define") sp
           _ ->
@@ -35,9 +36,9 @@ primitiveSyntax =
           case getIds ids of
             Just jids -> do
               let test = map (\x -> (x, BVal)) jids
-              modify $ \(ParseState l g) ->
+              modify $ \(ParseState l g lab) ->
                          let newEnv = extendEnv test l
-                         in ParseState newEnv g
+                         in ParseState newEnv g lab
               parseJLForm bodies
             Nothing ->
               invalidSyntax ts (Just "lambda") sp
@@ -50,12 +51,13 @@ primitiveSyntax =
         Just ps -> do
           exps <- mapM (parseJLForm . snd) ps
           let vars = zip (map fst ps) exps
-          modify $ \(ParseState l g) ->
+          modify $ \(ParseState l g lab) ->
             let parsedPairs = map (\(x, _) -> (x, BVal)) ps
                 newEnv = extendEnv parsedPairs l
-            in ParseState newEnv g
+            in ParseState newEnv g lab
           bodies <- mapM parseJLForm bs
-          return $ JLLet vars bodies sp
+          l <- getLabel
+          return $ A (Ann sp l) (JLLet vars bodies)
         Nothing ->
           invalidSyntax ts (Just "let") sp
     )
@@ -63,14 +65,16 @@ primitiveSyntax =
     \x ->
       case x of
         (JLSList [_, test, true, false] sp) -> do
+          l <- getLabel
           ptest <- parseJLForm test
           ptrue <- parseJLForm true
           pfalse <- parseJLForm false
-          return $ JLTwoIf ptest ptrue pfalse sp
+          return $ A (Ann sp l) (JLTwoIf ptest ptrue pfalse)
         (JLSList [_, test, true] sp) -> do
+          l <- getLabel
           ptest <- parseJLForm test
           ptrue <- parseJLForm true
-          return $ JLOneIf ptest ptrue sp
+          return $ A (Ann sp l) (JLOneIf ptest ptrue)
         JLSList _ sp ->
           invalidSyntax x (Just "if") sp
         _ ->
@@ -87,8 +91,10 @@ primitiveSyntax =
               JLConst $ JLSymbol s
     in \x ->
          case x of
-           JLSList [_, val] sp ->
-             return . flip JLQuote sp . quote $ val
+           JLSList [_, val] sp -> do
+             l <- getLabel
+             return $ A (Ann sp l) (JLQuote $ quote val)
+             -- return . flip JLQuote sp . quote $ val
            JLSList _ sp ->
              invalidSyntax x (Just "quote") sp
            _ ->

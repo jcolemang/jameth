@@ -10,17 +10,17 @@ extra-source-files:  README.org
 
 library
   hs-source-dirs:      scheme/
-  exposed-modules:     LambdaCalculus.LambdaEval
-                     , Analysis.Analysis
+  exposed-modules:     Analysis.Analysis
                      , Analysis.AnalysisTypes
                      , Analysis.Analyzers.AppendAnalysis
+                     , DataFlow.DataFlow
                      , Scheme.JLParse
                      , Scheme.JLTypes
                      , Scheme.JLParsingTypes
                      , Scheme.JLEvaluationTypes
                      , Scheme.JLPrimitiveProcs
                      , Scheme.JLPrimitiveSyntax
-                     , Interpreter.JLReadSource
+                     , Scheme.JLReadSource
   other-modules:       Scheme.JLTokenize
   build-depends:       base >= 4.7 && < 5
                      , parsec

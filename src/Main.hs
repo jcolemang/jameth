@@ -1,7 +1,7 @@
 module Main where
 
 -- import Scheme.JLParse
-import Interpreter.JLReadSource
+import Scheme.JLReadSource
 import Analysis.Analysis
 
 import System.Environment
@@ -22,7 +22,7 @@ main = do
       print err
     Right prog -> do
       print prog
-      print (analyze $ formAnalysis prog)
+      -- print (analyze $ formAnalysis prog)
   hFlush stdout
 
 

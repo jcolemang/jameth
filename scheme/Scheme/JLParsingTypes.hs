@@ -3,6 +3,7 @@
 
 module Scheme.JLParsingTypes
   ( modify', modify
+  , getLabel
   , BoundValue (..)
   , JLTree (..)
   , ParseState (..)
@@ -42,7 +43,14 @@ data ParseState
   = ParseState
   { localEnv :: LocalEnvironment BoundValue
   , globalEnv :: GlobalEnvironment BoundValue
+  , labelNum :: Int
   } deriving (Show)
+
+getLabel :: ParseMonad Int
+getLabel = do
+  l <- labelNum <$> get
+  modify $ \s -> s { labelNum = l + 1 }
+  return l
 
 data JLParseError
   = JLParseError SourcePos

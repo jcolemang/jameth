@@ -11,9 +11,12 @@ module Scheme.JLTypes
   , SourcePos (..)
   , LocalEnvironment
   , GlobalEnvironment
-  , Form (..)
+  , Form
+  , RawForm (..)
   , Value (..)
   , Program (..)
+  , Annotated (..)
+  , Annotation (..)
 
   -- Should be removed
   , globalReference
@@ -73,65 +76,78 @@ isGlobal :: LexicalAddress -> Bool
 isGlobal (Global _) = True
 isGlobal _ = False
 
-data Form
-  = Value Value SourcePos
-  | Var String LexicalAddress SourcePos
-  | JLQuote Value SourcePos
-  | JLLambda JLFormals [Form] SourcePos
-  | JLLet [(String, Form)] [Form] SourcePos
-  | JLTwoIf Form Form Form SourcePos
-  | JLOneIf Form Form SourcePos
-  | JLDefine String Form SourcePos
-  | JLApp Form [Form] SourcePos
+data Annotated ann f
+  = A ann f
+  deriving (Show)
+
+data Annotation
+  = Ann
+  { pos :: SourcePos
+  , label :: Int
+  } deriving (Show)
+
+type Form
+  = Annotated Annotation RawForm
+
+data RawForm
+  = Value Value
+  | Var String LexicalAddress
+  | JLQuote Value
+  | JLLambda JLFormals [Form]
+  | JLLet [(String, Form)] [Form]
+  | JLTwoIf Form Form Form
+  | JLOneIf Form Form
+  | JLDefine String Form
+  | JLApp Form [Form]
   deriving (Show)
 
 isValue :: Form -> Bool
-isValue Value {} = True
+isValue (A _ Value {}) = True
 isValue _ = False
 
 isVar :: Form -> Bool
-isVar Var {} = True
+isVar (A _ Var {}) = True
 isVar _ = False
 
 isQuote :: Form -> Bool
-isQuote JLQuote {} = True
+isQuote (A _ JLQuote {}) = True
 isQuote _ = False
 
 isLambda :: Form -> Bool
-isLambda JLLambda {} = True
+isLambda (A _ JLLambda {}) = True
 isLambda _ = False
 
 isLet :: Form -> Bool
-isLet JLLet {} = True
+isLet (A _ JLLet {}) = True
 isLet _ = False
 
 isTwoIf :: Form -> Bool
-isTwoIf JLTwoIf {} = True
+isTwoIf (A _ JLTwoIf {}) = True
 isTwoIf _ = False
 
 isOneIf :: Form -> Bool
-isOneIf JLOneIf {} = True
+isOneIf (A _ JLOneIf {}) = True
 isOneIf _ = False
 
 isDefine :: Form -> Bool
-isDefine JLDefine {} = True
+isDefine (A _ JLDefine {}) = True
 isDefine _ = False
 
 isApp :: Form -> Bool
-isApp JLApp {} = True
+isApp (A _ JLApp {}) = True
 isApp _ = False
 
 displayForm :: Form -> String
-displayForm (Value val _) =
+displayForm (A _ (Value val)) =
   displayValue val
-displayForm (Var name _ _) =
+displayForm (A _ (Var name _)) =
   name
-displayForm (JLQuote val _) =
+displayForm (A _ (JLQuote val)) =
   "(quote " ++ show val ++ ")"
-displayForm (JLLambda formals bodies _) =
+displayForm (A _ (JLLambda formals bodies)) =
   let bs = unwords (map displayForm bodies)
   in "(lambda " ++ displayFormals formals ++ " " ++ bs ++ ")"
-displayForm (JLApp f args _) =
+displayForm (A _ (JLApp f args)) =
   let as = unwords (map displayForm args)
   in "(" ++ displayForm f ++ " " ++ as ++ ")"
 displayForm _ =

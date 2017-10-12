@@ -66,6 +66,7 @@ runJLParse s =
   let initialState = ParseState
                      { localEnv = createEmptyEnv
                      , globalEnv = initialGlobal
+                     , labelNum = 0
                      }
   in do
     tree <- readJL s
@@ -80,18 +81,20 @@ expandSyntax :: JLSyntax -> JLTree -> ParseMonad Form
 expandSyntax (BuiltIn _ f) = f
 
 parseJLForm :: JLTree -> ParseMonad Form
-parseJLForm (JLVal v p) =
-  return $ Value (JLConst v) p
+parseJLForm (JLVal v p) = do
+  l <- getLabel
+  return $ A (Ann p l) (Value (JLConst v))
 parseJLForm tree@(JLId x sp) = do
   local <- localEnv <$> get
   global <- globalEnv <$> get
+  l <- getLabel
   case getAddress x local global of
     Nothing ->
       unboundVariable tree x sp
     Just (BSyntax (BuiltIn name _), _) ->
       invalidSyntax tree (Just name) sp
     Just (_, addr) ->
-      return $ Var x addr sp
+      return $ A (Ann sp l) (Var x addr)
 parseJLForm tree@(JLSList [] sp) =
   invalidSyntax tree Nothing sp
 parseJLForm tree@(JLSList (JLId x idsp:rest) sp) = do
@@ -105,7 +108,8 @@ parseJLForm tree@(JLSList (JLId x idsp:rest) sp) = do
         BVal -> do
           rexps <- mapM parseJLForm rest
           rx <- parseJLForm $ JLId x idsp
-          return $ JLApp rx rexps sp
+          l <- getLabel
+          return $ A (Ann idsp l) (JLApp rx rexps)
         BSyntax s ->
           expandSyntax s tree
         _ ->
@@ -113,4 +117,5 @@ parseJLForm tree@(JLSList (JLId x idsp:rest) sp) = do
 parseJLForm (JLSList (f:rest) sp) = do
   fform <- parseJLForm f
   rforms <- mapM parseJLForm rest
-  return $ JLApp fform rforms sp
+  l <- getLabel
+  return $ A (Ann sp l) (JLApp fform rforms)
