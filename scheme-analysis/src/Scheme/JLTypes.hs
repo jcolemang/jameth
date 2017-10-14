@@ -3,8 +3,11 @@ module Scheme.JLTypes
   ( displayForm
   , getAddress, getValue
   , isValue, isVar, isQuote, isLambda, isLet, isTwoIf, isOneIf, isDefine, isApp
-  , extendEnv, createEnv, putInEnv, createGlobalEnv, createEmptyEnv
+  , extendEnv, createEnv, putInEnv, createEmptyEnv
+  , createGlobalEnv
+  , emptyGlobal
   , annotation, form
+  , globalPairs
 
   , Closure (..)
   , Arity (..)
@@ -55,6 +58,11 @@ data Program
   = Program [Form]
   deriving (Show)
 
+instance Monoid Program where
+  mempty = Program []
+  mappend (Program fs) (Program fs') =
+    Program (fs ++ fs')
+
 newtype Depth = Depth Int
               deriving (Show)
 newtype Index = Index Int
@@ -90,12 +98,6 @@ data Annotation
   { pos :: SourcePos
   , label :: Label
   } deriving (Show)
-
--- primitiveAnnotation =
---   Ann
---   { pos = PrimitiveSource
---   ,
---   }
 
 type Form
   = Annotated Annotation RawForm
@@ -239,6 +241,12 @@ createEmptyEnv = EmptyEnv
 
 createGlobalEnv :: [(String, a)] -> GlobalEnvironment a
 createGlobalEnv = GlobalEnv . fromList
+
+emptyGlobal :: GlobalEnvironment a
+emptyGlobal = GlobalEnv $ fromList []
+
+globalPairs :: GlobalEnvironment a -> [(String, a)]
+globalPairs (GlobalEnv m) = toList m
 
 getAddress :: String
            -> LocalEnvironment a

@@ -53,25 +53,31 @@ getSourcePos (JLVal _ sp) = sp
 getSourcePos (JLId _ sp) = sp
 getSourcePos (JLSList _ sp) = sp
 
+addGlobalLabel :: String -> RawForm -> ParseMonad Form
+addGlobalLabel s f = do
+  l1 <- getLabel
+  l2 <- getLabel
+  let ann1 = Ann PrimitiveSource l1
+  let ann2 = Ann PrimitiveSource l2
+  return $ A ann1 (Define s (A ann2 f))
+
+primitiveDefinitions :: ParseMonad Program
+primitiveDefinitions =
+  let fs = map (second $ Value . JLProc) primitiveProcedures
+  in Program <$> mapM (uncurry addGlobalLabel) fs
+
 initialGlobal :: GlobalEnvironment BoundValue
 initialGlobal =
-  let stuff = map (\(s, _) -> (s, BVal)) primitiveProcedures
-              ++
-              map (second BSyntax) primitiveSyntax
-  in createGlobalEnv stuff
-
+  createGlobalEnv $ fmap (second BSyntax) primitiveSyntax
 
 runJLParse :: String -> Either JLParseError Program
 runJLParse s =
-  let initialState = ParseState
-                     { localEnv = createEmptyEnv
-                     , globalEnv = initialGlobal
-                     , labelNum = 0
-                     }
+  let initGlobal = initialState initialGlobal
+      addDefs = liftM2 mappend primitiveDefinitions
   in do
     tree <- readJL s
-    fst $ runIdentity (runStateT (runExceptT (runParser (parse tree)))
-                                 initialState)
+    fst $ runIdentity (runStateT (runExceptT (runParser (addDefs $ parse tree)))
+                                 initGlobal)
 
 parse :: [JLTree] -> ParseMonad Program
 parse ts =

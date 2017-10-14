@@ -4,9 +4,10 @@
 module Scheme.JLParsingTypes
   ( modify', modify
   , getLabel
+  , initialState
   , BoundValue (..)
   , JLTree (..)
-  , ParseState (..)
+  , ParseState ( ParseState, localEnv, globalEnv )
   , JLSyntax (..)
   , JLParseError (..)
   , ParseMonad (..)
@@ -45,6 +46,14 @@ data ParseState
   , globalEnv :: GlobalEnvironment BoundValue
   , labelNum :: Int
   } deriving (Show)
+
+initialState :: GlobalEnvironment BoundValue -> ParseState
+initialState g =
+  ParseState
+  { localEnv = createEmptyEnv
+  , globalEnv = g
+  , labelNum = 0
+  }
 
 getLabel :: ParseMonad Int
 getLabel = do
