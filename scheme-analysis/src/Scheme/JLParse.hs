@@ -109,7 +109,7 @@ parseJLForm tree@(JLSList (JLId x idsp:rest) sp) = do
           rexps <- mapM parseJLForm rest
           rx <- parseJLForm $ JLId x idsp
           l <- getLabel
-          return $ A (Ann idsp l) (JLApp rx rexps)
+          return $ A (Ann idsp l) (App rx rexps)
         BSyntax s ->
           expandSyntax s tree
         _ ->
@@ -118,4 +118,4 @@ parseJLForm (JLSList (f:rest) sp) = do
   fform <- parseJLForm f
   rforms <- mapM parseJLForm rest
   l <- getLabel
-  return $ A (Ann sp l) (JLApp fform rforms)
+  return $ A (Ann sp l) (App fform rforms)

@@ -4,6 +4,7 @@ module Scheme.JLTypes
   , getAddress, getValue
   , isValue, isVar, isQuote, isLambda, isLet, isTwoIf, isOneIf, isDefine, isApp
   , extendEnv, createEnv, putInEnv, createGlobalEnv, createEmptyEnv
+  , annotation, form
 
   , Closure (..)
   , Arity (..)
@@ -12,11 +13,13 @@ module Scheme.JLTypes
   , LocalEnvironment
   , GlobalEnvironment
   , Form
+  , Formals (..)
   , RawForm (..)
   , Value (..)
   , Program (..)
   , Annotated (..)
   , Annotation (..)
+  , Label
 
   -- Should be removed
   , globalReference
@@ -44,13 +47,7 @@ displayConstant (JLNum num) = show num
 displayConstant (JLSymbol x) = x
 displayConstant JLVoid = "#<void>"
 
-data JLFormals
-  = JLSymbolFormal    String
-  | JLFormals         [String]
-  | JLImproperFormals String [String] String
-  deriving (Show)
-
-displayFormals :: JLFormals -> String
+displayFormals :: Formals -> String
 displayFormals _ =
   undefined
 
@@ -80,26 +77,64 @@ data Annotated ann f
   = A ann f
   deriving (Show)
 
+annotation :: Annotated ann f -> ann
+annotation (A a _) = a
+
+form :: Annotated ann f -> f
+form (A _ f) = f
+
+type Label = Int
+
 data Annotation
   = Ann
   { pos :: SourcePos
-  , label :: Int
+  , label :: Label
   } deriving (Show)
+
+-- primitiveAnnotation =
+--   Ann
+--   { pos = PrimitiveSource
+--   ,
+--   }
 
 type Form
   = Annotated Annotation RawForm
 
+type Bodies = [Form]
+
 data RawForm
   = Value Value
   | Var String LexicalAddress
-  | JLQuote Value
-  | JLLambda JLFormals [Form]
-  | JLLet [(String, Form)] [Form]
-  | JLTwoIf Form Form Form
-  | JLOneIf Form Form
-  | JLDefine String Form
-  | JLApp Form [Form]
+  | Quote Value
+  | Lambda Formals Bodies
+  | Let [(String, Form)] Bodies
+  | TwoIf Form Form Form
+  | OneIf Form Form
+  | Define String Form
+  | App Form [Form]
   deriving (Show)
+
+data Formals
+  = SymbolFormal    String
+  | Formals         [String]
+  | ImproperFormals String [String] String
+  deriving (Show)
+
+data Arity
+  = Exactly Int
+  | AnyNum
+  | AtLeast Int
+  | Cases [Arity]
+
+data Closure
+  = Closure Formals Bodies (LocalEnvironment Form) SourcePos
+  | Primitive String Arity
+
+-- data ExpandedForm
+--   = EValue Value
+--   | EVar String LexicalAddress
+--   | EQuote Value
+--   | ELambda
 
 isValue :: Form -> Bool
 isValue (A _ Value {}) = True
@@ -110,31 +145,31 @@ isVar (A _ Var {}) = True
 isVar _ = False
 
 isQuote :: Form -> Bool
-isQuote (A _ JLQuote {}) = True
+isQuote (A _ Quote {}) = True
 isQuote _ = False
 
 isLambda :: Form -> Bool
-isLambda (A _ JLLambda {}) = True
+isLambda (A _ Lambda {}) = True
 isLambda _ = False
 
 isLet :: Form -> Bool
-isLet (A _ JLLet {}) = True
+isLet (A _ Let {}) = True
 isLet _ = False
 
 isTwoIf :: Form -> Bool
-isTwoIf (A _ JLTwoIf {}) = True
+isTwoIf (A _ TwoIf {}) = True
 isTwoIf _ = False
 
 isOneIf :: Form -> Bool
-isOneIf (A _ JLOneIf {}) = True
+isOneIf (A _ OneIf {}) = True
 isOneIf _ = False
 
 isDefine :: Form -> Bool
-isDefine (A _ JLDefine {}) = True
+isDefine (A _ Define {}) = True
 isDefine _ = False
 
 isApp :: Form -> Bool
-isApp (A _ JLApp {}) = True
+isApp (A _ App {}) = True
 isApp _ = False
 
 displayForm :: Form -> String
@@ -142,26 +177,16 @@ displayForm (A _ (Value val)) =
   displayValue val
 displayForm (A _ (Var name _)) =
   name
-displayForm (A _ (JLQuote val)) =
+displayForm (A _ (Quote val)) =
   "(quote " ++ show val ++ ")"
-displayForm (A _ (JLLambda formals bodies)) =
+displayForm (A _ (Lambda formals bodies)) =
   let bs = unwords (map displayForm bodies)
   in "(lambda " ++ displayFormals formals ++ " " ++ bs ++ ")"
-displayForm (A _ (JLApp f args)) =
+displayForm (A _ (App f args)) =
   let as = unwords (map displayForm args)
   in "(" ++ displayForm f ++ " " ++ as ++ ")"
 displayForm _ =
   undefined
-
-data Arity
-  = Exactly Int
-  | AnyNum
-  | AtLeast Int
-  | Cases [Arity]
-
-data Closure
-  = Closure JLFormals [Form] (LocalEnvironment Value) SourcePos
-  | Primitive String Arity
 
 instance Show Closure where
   show _ = "<closure>"
@@ -170,14 +195,14 @@ data Value
   = JLConst Constant
   | JLProc Closure
   | JLList [Value]
-  deriving (Show, Eq)
+  deriving (Show)
 
 displayValue :: Value -> String
 displayValue (JLConst c) = displayConstant c
 displayValue _ = undefined
 
-instance Eq Closure where
-  _ == _ = False
+-- instance Eq (Closure a) where
+--   _ == _ = False
 
 data LocalEnvironment a
   = Env [(String, a)] (LocalEnvironment a)

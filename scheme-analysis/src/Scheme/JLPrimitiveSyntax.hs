@@ -22,7 +22,7 @@ primitiveSyntax =
             --             let (l', g') = putInEnv x BVal (globalReference "define") l g
             --             in ParseState l' g'
             l <- getLabel
-            return $ A (Ann sp l) (JLDefine x pexp)
+            return $ A (Ann sp l) (Define x pexp)
           JLSList _ sp ->
             invalidSyntax ts (Just "define") sp
           _ ->
@@ -57,7 +57,7 @@ primitiveSyntax =
             in ParseState newEnv g lab
           bodies <- mapM parseJLForm bs
           l <- getLabel
-          return $ A (Ann sp l) (JLLet vars bodies)
+          return $ A (Ann sp l) (Let vars bodies)
         Nothing ->
           invalidSyntax ts (Just "let") sp
     )
@@ -69,12 +69,12 @@ primitiveSyntax =
           ptest <- parseJLForm test
           ptrue <- parseJLForm true
           pfalse <- parseJLForm false
-          return $ A (Ann sp l) (JLTwoIf ptest ptrue pfalse)
+          return $ A (Ann sp l) (TwoIf ptest ptrue pfalse)
         (JLSList [_, test, true] sp) -> do
           l <- getLabel
           ptest <- parseJLForm test
           ptrue <- parseJLForm true
-          return $ A (Ann sp l) (JLOneIf ptest ptrue)
+          return $ A (Ann sp l) (OneIf ptest ptrue)
         JLSList _ sp ->
           invalidSyntax x (Just "if") sp
         _ ->
@@ -93,7 +93,7 @@ primitiveSyntax =
          case x of
            JLSList [_, val] sp -> do
              l <- getLabel
-             return $ A (Ann sp l) (JLQuote $ quote val)
+             return $ A (Ann sp l) (Quote $ quote val)
              -- return . flip JLQuote sp . quote $ val
            JLSList _ sp ->
              invalidSyntax x (Just "quote") sp

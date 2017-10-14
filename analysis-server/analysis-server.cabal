@@ -1,0 +1,26 @@
+name:                analysis-server
+version:             0.1.0.0
+author:              James Coleman Gibson
+copyright:           2017 James Coleman Gibson
+category:            Web
+build-type:          Simple
+cabal-version:       >=1.10
+
+library
+  hs-source-dirs:      src/AnalysisServer
+  exposed-modules:     Server
+  other-modules:
+  build-depends:       base >= 4.7 && < 5
+                     , snap-server
+                     , snap-core
+  default-language:    Haskell2010
+
+executable analysis-server
+  hs-source-dirs:      src/Main
+  main-is:             Main.hs
+  ghc-options:         -Wall
+  build-depends:       base >= 4.7 && < 5
+                     , scheme-analysis
+                     , analysis-server
+  other-modules:
+  default-language:    Haskell2010
