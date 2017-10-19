@@ -34,6 +34,7 @@ primitiveSyntax =
             Just jids -> do
               extendEnv $ map (\x -> (x, BVal)) jids
               parsedBodies <- parseJLForm bodies
+              popEnv
               l <- getLabel
               return $ A (Ann sp l) (Lambda (Formals jids) [parsedBodies])
             Nothing ->

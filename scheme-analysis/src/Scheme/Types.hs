@@ -1,5 +1,6 @@
 
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
 
 module Scheme.Types
   ( displayForm
@@ -25,6 +26,8 @@ module Scheme.Types
   , globalReference
   , isGlobal
   , getEnvValue
+  , popEnv
+  , withNewEnv
 
   , Closure (..)
   , Arity (..)
@@ -46,7 +49,7 @@ module Scheme.Types
 where
 
 import Data.Map hiding (map, foldl, foldl')
-import Data.List hiding (insert)
+-- import Data.List hiding (insert)
 
 data Constant
   = SStr  String
@@ -67,6 +70,8 @@ displayConstant (SSymbol x) = x
 displayConstant SVoid = "#<void>"
 
 displayFormals :: Formals -> String
+displayFormals (SymbolFormal x) =
+  x
 displayFormals (Formals ids) =
   "(" ++ unwords ids ++ ")"
 
@@ -201,8 +206,8 @@ isApp _ = False
 displayForm :: Form -> String
 displayForm (A _ (Value val)) =
   displayValue val
-displayForm (A _ (Var name _)) =
-  name
+displayForm (A _ (Var name addr)) =
+  "(" ++ name ++ ":" ++ show addr ++ ")"
 displayForm (A _ (Quote val)) =
   "(quote " ++ show val ++ ")"
 displayForm (A _ (Lambda formals bodies)) =
@@ -238,11 +243,15 @@ data LocalEnvironment a
   | EmptyEnv
   deriving (Show)
 
-class (Monad m) => Environment m a where
+class (Monad m) => Environment m a | m -> a where
   getLocalEnv  :: m (LocalEnvironment a)
+
   getGlobalEnv :: m (GlobalEnvironment a)
+
   putLocalEnv  :: LocalEnvironment a -> m ()
+
   putGlobalEnv :: GlobalEnvironment a -> m ()
+
 
 putInEnv :: Environment m a
          => String
@@ -258,12 +267,38 @@ putInEnv n datum (Global _) = do
   (GlobalEnv m) <- getGlobalEnv
   putGlobalEnv (GlobalEnv $ insert n datum m)
 
+popEnv :: Environment m a => m ()
+popEnv = do
+  (Env _ p) <- getLocalEnv
+  putLocalEnv p
+  return ()
+
+withNewEnv :: Environment m a
+           => [(String, a)]
+           -> LocalEnvironment a
+           -> m a
+           -> m a
+withNewEnv ps env task = do
+  curr <- getLocalEnv
+  putLocalEnv env
+  extendEnv ps
+  result <- task
+  putLocalEnv curr
+  return result
+
 extendEnv :: Environment m a
           => [(String, a)]
           -> m ()
 extendEnv m = do
   l <- getLocalEnv
   putLocalEnv $ Env m l
+
+-- extendEnv :: Environment m a
+--           => [(String, a)]
+--           -> m ()
+-- extendEnv m = do
+--   l <- getLocalEnv
+--   putLocalEnv $ Env m l
 
 extendGlobalEnv :: Environment m a
                 => [(String, a)]
@@ -309,8 +344,8 @@ getAddress iden local (GlobalEnv global) =
     v@(Just _) -> v
 
 getEnvValue :: Environment m a
-         => LexicalAddress
-         -> m (Maybe a)
+            => LexicalAddress
+            -> m (Maybe a)
 getEnvValue (Global s) = do
   (GlobalEnv m) <- getGlobalEnv
   case Data.Map.lookup s m of

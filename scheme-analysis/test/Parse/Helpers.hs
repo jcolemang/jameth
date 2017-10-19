@@ -9,6 +9,9 @@ getFirstFormA _ = Nothing
 getFirstForm (Right (Program (x:_))) = Just $ form x
 getFirstForm _ = Nothing
 
+getSecondForm (Right (Program (_:x:_))) = Just $ form x
+getSecondForm _ = Nothing
+
 getQuoted (Quote x) = Just x
 getQuoted _ = Nothing
 

@@ -39,7 +39,6 @@ evaluateForm (A ann f) =
        App ratorForm randForms -> do
          rator <- evaluateForm ratorForm
          rands <- mapM evaluateForm randForms
-         -- traceShowM $ "Op: " ++ show rator ++ "   Rands: " ++ show rands
          case rator of
            Proc closure ->
              applyClosure sp closure rands
@@ -56,12 +55,7 @@ evaluateForm (A ann f) =
 applyClosure :: SourcePos -> Closure -> [Value] -> EvalMonad Value
 applyClosure sp closure rands =
   case closure of
-    Closure (Formals ids) bodies env _ -> do
-      curr <- getLocalEnv :: EvalMonad (LocalEnvironment Value)
-      putLocalEnv env
-      extendEnv $ zip ids rands
-      vals <- mapM evaluateForm bodies
-      putLocalEnv curr
-      return $ last vals
+    Closure (Formals ids) bodies env _ ->
+      withNewEnv (zip ids rands) env (last <$> mapM evaluateForm bodies)
     Primitive name _ ->
       applyPrimProc sp name rands

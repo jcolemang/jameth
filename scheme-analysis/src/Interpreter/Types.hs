@@ -40,7 +40,6 @@ runEval m =
                      }
   in fst <$> runStateT (runExceptT (eval m)) initialState
 
-
 nonProcedure :: SourcePos -> Value -> EvalMonad a
 nonProcedure sp v =
   throwError $ NonProcedure sp v

@@ -6,7 +6,6 @@ import Scheme.Parse
 import Parse.Helpers
 
 import Test.HUnit
-import Debug.Trace
 
 isRawApp :: RawForm -> Bool
 isRawApp (App _ _) = True
@@ -19,6 +18,28 @@ parseBasicApplication = TestCase $ do
 
   let r2 = getFirstFormA (runParseNoInit "(lambda (x) x)")
   assertBool "Result is lambda" $ maybe False isLambda r2
+
+  -- let r3 = getFirstForm (runParseNoInit "(lambda (lambda) lambda)")
+  -- case r3 of
+  --   Just (Lambda _ [body]) ->
+  --     assertBool "Body is a variable" $ isVar body
+  --   _ ->
+  --     assertFailure "Lambda shadowing error"
+  -- case r3 of
+  --   Just (Lambda _ [body]) ->
+  --     assertBool "Body is a variable" $ isVar body
+  --   _ ->
+  --     assertFailure "Lambda shadowing error"
+
+  let r4 = getSecondForm (runParseNoInit ("(lambda (lambda) lambda)" ++
+                                          "(lambda (lambda) lambda)"))
+  case r4 of
+    Just (Lambda _ [body]) ->
+      assertBool "Body is a variable" $ isVar body
+    Just _ ->
+      assertFailure "Environment escaping to second expression"
+    _ ->
+      assertFailure "Lambda shadowing error"
 
 tests :: [Test]
 tests =
