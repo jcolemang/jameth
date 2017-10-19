@@ -1,13 +1,30 @@
 
-module Scheme.JLTypes
+{-# LANGUAGE MultiParamTypeClasses #-}
+
+module Scheme.Types
   ( displayForm
-  , getAddress, getValue
-  , isValue, isVar, isQuote, isLambda, isLet, isTwoIf, isOneIf, isDefine, isApp
-  , extendEnv, createEnv, putInEnv, createEmptyEnv
+  , getAddress
+  , isValue
+  , isVar
+  , isQuote
+  , isLambda
+  , isLet
+  , isTwoIf
+  , isOneIf
+  , isDefine
+  , isApp
+  , extendEnv
+  , createEnv
+  , putInEnv, createEmptyEnv
+  , extendGlobalEnv
   , createGlobalEnv
-  , emptyGlobal
+  , putInGlobalEnv
+  , createEmptyGlobalEnv
   , annotation, form
   , globalPairs
+  , globalReference
+  , isGlobal
+  , getEnvValue
 
   , Closure (..)
   , Arity (..)
@@ -23,36 +40,35 @@ module Scheme.JLTypes
   , Annotated (..)
   , Annotation (..)
   , Label
+  , Environment (..)
 
-  -- Should be removed
-  , globalReference
-  , isGlobal
   )
 where
 
-import Data.Map hiding (map)
+import Data.Map hiding (map, foldl, foldl')
+import Data.List hiding (insert)
 
 data Constant
-  = JLStr  String
-  | JLBool Bool
-  | JLInt  Integer
-  | JLNum  Double
-  | JLSymbol String
-  | JLVoid
+  = SStr  String
+  | SBool Bool
+  | SInt  Integer
+  | SNum  Double
+  | SSymbol String
+  | SVoid
   deriving (Show, Eq)
 
 displayConstant :: Constant -> String
-displayConstant (JLStr s) = show s
-displayConstant (JLBool True) = "#t"
-displayConstant (JLBool False) = "#f"
-displayConstant (JLInt num) = show num
-displayConstant (JLNum num) = show num
-displayConstant (JLSymbol x) = x
-displayConstant JLVoid = "#<void>"
+displayConstant (SStr s) = show s
+displayConstant (SBool True) = "#t"
+displayConstant (SBool False) = "#f"
+displayConstant (SInt num) = show num
+displayConstant (SNum num) = show num
+displayConstant (SSymbol x) = x
+displayConstant SVoid = "#<void>"
 
 displayFormals :: Formals -> String
-displayFormals _ =
-  undefined
+displayFormals (Formals ids) =
+  "(" ++ unwords ids ++ ")"
 
 data Program
   = Program [Form]
@@ -73,7 +89,6 @@ data LexicalAddress
   | Bound Depth Index
   deriving ( Show )
 
--- TODO This should not be here
 globalReference :: String -> LexicalAddress
 globalReference = Global
 
@@ -129,8 +144,17 @@ data Arity
   | Cases [Arity]
 
 data Closure
-  = Closure Formals Bodies (LocalEnvironment Form) SourcePos
+  = Closure Formals Bodies (LocalEnvironment Value) SourcePos
   | Primitive String Arity
+
+displayClosure :: Closure -> String
+displayClosure Closure {} = "<closure>"
+displayClosure Primitive {} = "<primitive>"
+
+instance Eq Closure where
+  (Closure _ _ _ sp) == (Closure _ _ _ sp') = sp == sp'
+  (Primitive name _) == (Primitive name' _) = name == name'
+  _ == _ = False
 
 -- data ExpandedForm
 --   = EValue Value
@@ -187,21 +211,24 @@ displayForm (A _ (Lambda formals bodies)) =
 displayForm (A _ (App f args)) =
   let as = unwords (map displayForm args)
   in "(" ++ displayForm f ++ " " ++ as ++ ")"
-displayForm _ =
-  undefined
+displayForm (A _ (Define name f)) =
+  "(define " ++ name ++ " " ++ displayForm f ++ ")\n"
 
 instance Show Closure where
   show _ = "<closure>"
 
 data Value
-  = JLConst Constant
-  | JLProc Closure
-  | JLList [Value]
-  deriving (Show)
+  = Const Constant
+  | Proc Closure
+  | VList [Value]
+  | Undefined
+  deriving ( Show, Eq )
 
 displayValue :: Value -> String
-displayValue (JLConst c) = displayConstant c
+displayValue (Const c) = displayConstant c
+displayValue (Proc p) = displayClosure p
 displayValue _ = undefined
+-- displayValue (VList vs) = intercolate " "
 
 -- instance Eq (Closure a) where
 --   _ == _ = False
@@ -211,30 +238,51 @@ data LocalEnvironment a
   | EmptyEnv
   deriving (Show)
 
-putInEnv :: String
+class (Monad m) => Environment m a where
+  getLocalEnv  :: m (LocalEnvironment a)
+  getGlobalEnv :: m (GlobalEnvironment a)
+  putLocalEnv  :: LocalEnvironment a -> m ()
+  putGlobalEnv :: GlobalEnvironment a -> m ()
+
+putInEnv :: Environment m a
+         => String
          -> a
          -> LexicalAddress
-         -> LocalEnvironment a
-         -> GlobalEnvironment a
-         -> (LocalEnvironment a, GlobalEnvironment a)
-putInEnv name datum (Bound (Depth 0) (Index i)) (Env ls parent) g =
-  ( Env (take (i-1) ls ++ [(name, datum)] ++ drop (i+1) ls) parent, g)
-putInEnv name datum (Bound (Depth i) idx) (Env ls parent) g =
-  let (nextLocal, nextGlobal) =
-        putInEnv name datum (Bound (Depth $ i - 1) idx) parent g
-  in (Env ls nextLocal, nextGlobal)
-putInEnv n datum (Global _) env (GlobalEnv m) =
-  (env, GlobalEnv $ insert n datum m)
-putInEnv _ _ _ _ _ =
-  error "A lexical addressing error occurred. Please report this as a bug."
+         -> m ()
+putInEnv name datum (Bound (Depth 0) (Index i)) = do
+  (Env ls parent) <- getLocalEnv
+  putLocalEnv $ Env (take (i-1) ls ++ [(name, datum)] ++ drop (i+1) ls) parent
+putInEnv name datum (Bound (Depth i) idx) =
+  putInEnv name datum (Bound (Depth $ i - 1) idx)
+putInEnv n datum (Global _) = do
+  (GlobalEnv m) <- getGlobalEnv
+  putGlobalEnv (GlobalEnv $ insert n datum m)
 
-extendEnv :: [(String, a)]
-                  -> LocalEnvironment a
-                  -> LocalEnvironment a
-extendEnv = Env
+extendEnv :: Environment m a
+          => [(String, a)]
+          -> m ()
+extendEnv m = do
+  l <- getLocalEnv
+  putLocalEnv $ Env m l
+
+extendGlobalEnv :: Environment m a
+                => [(String, a)]
+                -> m ()
+extendGlobalEnv newVals = do
+  (GlobalEnv m) <- getGlobalEnv
+  putGlobalEnv (GlobalEnv $ foldl (flip $ uncurry insert) m newVals)
+
+putInGlobalEnv :: Environment m a
+               => String
+               -> a
+               -> m ()
+putInGlobalEnv name val = do
+  (GlobalEnv m) <- getGlobalEnv
+  putGlobalEnv (GlobalEnv $ insert name val m)
+
 
 createEnv :: [(String, a)] -> LocalEnvironment a
-createEnv = flip extendEnv EmptyEnv
+createEnv m = Env m EmptyEnv
 
 createEmptyEnv :: LocalEnvironment a
 createEmptyEnv = EmptyEnv
@@ -242,8 +290,8 @@ createEmptyEnv = EmptyEnv
 createGlobalEnv :: [(String, a)] -> GlobalEnvironment a
 createGlobalEnv = GlobalEnv . fromList
 
-emptyGlobal :: GlobalEnvironment a
-emptyGlobal = GlobalEnv $ fromList []
+createEmptyGlobalEnv :: GlobalEnvironment a
+createEmptyGlobalEnv = GlobalEnv $ fromList []
 
 globalPairs :: GlobalEnvironment a -> [(String, a)]
 globalPairs (GlobalEnv m) = toList m
@@ -260,11 +308,19 @@ getAddress iden local (GlobalEnv global) =
         Just bv -> Just (bv, Global iden)
     v@(Just _) -> v
 
-getValue :: LexicalAddress
-         -> LocalEnvironment a
-         -> GlobalEnvironment a
-         -> Maybe a
-getValue _ _ _ = undefined
+getEnvValue :: Environment m a
+         => LexicalAddress
+         -> m (Maybe a)
+getEnvValue (Global s) = do
+  (GlobalEnv m) <- getGlobalEnv
+  case Data.Map.lookup s m of
+    Nothing -> return Nothing
+    Just val -> return $ Just val
+getEnvValue (Bound (Depth 0) (Index i)) = do
+  (Env ls _) <- getLocalEnv
+  return . Just . snd $ ls !! i
+getEnvValue (Bound (Depth d) idx) =
+  getEnvValue $ Bound (Depth (d - 1)) idx
 
 findIdentifier :: String
                -> Int

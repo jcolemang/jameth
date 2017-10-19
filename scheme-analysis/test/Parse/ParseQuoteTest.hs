@@ -1,47 +1,48 @@
 
 module Parse.ParseQuoteTest where
 
-import Scheme.JLTypes
-import Scheme.JLParse
+import Scheme.Types
+import Scheme.Parse
+import Parse.Helpers
 
 import Test.HUnit
 import Data.Either
 
-getFirstForm (Right (Program (x:_))) = Just x
-getFirstForm _ = Nothing
-
-getQuoted (JLQuote x _) = Just x
-getQuoted _ = Nothing
-
-
 parseQuote :: Test
 parseQuote = TestCase $ do
+  let r1 = getQuoted =<< getFirstForm (runParseNoInit "(quote a)")
+  assertEqual "Basic quote"
+              (Just $ Const (SSymbol "a"))
+              r1
 
-  let r1 = getQuoted =<< getFirstForm (runJLParse "(quote a)")
-  assertEqual "Basic quote" r1 (Just $ JLConst (JLSymbol "a"))
+  let r2 = getQuoted =<< getFirstForm (runParseNoInit "'a")
+  assertEqual "Basic quote symbol"
+              (Just $ Const (SSymbol "a"))
+              r2
 
-  let r2 = getQuoted =<< getFirstForm (runJLParse "'a")
-  assertEqual "Basic quote symbol" r2 (Just $ JLConst (JLSymbol "a"))
+  let r3 = getQuoted =<< getFirstForm (runParseNoInit "''a")
+  assertEqual "Quoted quote"
+              (Just $ VList [ Const $ SSymbol "quote"
+                            , Const $ SSymbol "a"
+                            ])
+              r3
 
-  let r3 = getQuoted =<< getFirstForm (runJLParse "''a")
-  assertEqual "Quoted quote" r3 (Just $ JLList [ JLConst $ JLSymbol "quote"
-                                              , JLConst $ JLSymbol "a"
-                                              ])
-
-  let r4 = getQuoted =<< getFirstForm (runJLParse "'(a (b c) d)")
-  assertEqual "List quote" r4 (Just $ JLList [ JLConst $ JLSymbol "a"
-                                              , JLList
-                                                [ JLConst $ JLSymbol "b"
-                                                , JLConst $ JLSymbol "c"
-                                                ]
-                                              , JLConst $ JLSymbol "d"
-                                              ])
+  let r4 = getQuoted =<< getFirstForm (runParseNoInit "'(a (b c) d)")
+  assertEqual "List quote"
+              (Just $ VList [ Const $ SSymbol "a"
+                            , VList
+                              [ Const $ SSymbol "b"
+                              , Const $ SSymbol "c"
+                              ]
+                            , Const $ SSymbol "d"
+                            ])
+              r4
 
 parseBadQuote :: Test
 parseBadQuote = TestCase $ do
-  assertBool "Lonely quote" $ isLeft (runJLParse "quote")
-  assertBool "Another lonely quote" $ isLeft (runJLParse "'")
-  assertBool "Empty quote" $ isLeft (runJLParse "(quote)")
+  assertBool "Lonely quote" $ isLeft (runParseNoInit "quote")
+  assertBool "Another lonely quote" $ isLeft (runParseNoInit "'")
+  assertBool "Empty quote" $ isLeft (runParseNoInit "(quote)")
 
 
 tests :: [Test]

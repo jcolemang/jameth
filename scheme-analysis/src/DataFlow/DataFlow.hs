@@ -1,9 +1,12 @@
 
+{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module DataFlow.DataFlow where
 
-import Scheme.JLTypes
+import Scheme.Types
 import Scheme.JLPrimitiveProcs
 
 import Control.Monad.State
@@ -36,6 +39,21 @@ newtype AnalysisMonad a
   } deriving ( Functor, Applicative, Monad,
                MonadState AnalysisState, MonadError AnalysisError )
 
+instance Environment AnalysisMonad (Annotated Annotation RawForm) where
+  getLocalEnv = localEnv <$> get
+  getGlobalEnv = globalEnv <$> get
+  putLocalEnv l = modify $ \s -> s { localEnv = l }
+  putGlobalEnv g = modify $ \s -> s { globalEnv = g }
+
+
+-- runDataFlow :: Form -> [Either AnalysisError Program]
+runDataFlow f =
+  undefined
+  -- let initGlobal = initialState f
+  --     exec m = fst $ runIdentity (runStateT (runExceptT (runAnalysis m))
+  --                                 initGlobal)
+  -- in fmap exec (evaluate f)
+
 -- runAnalysis :: AnalysisMonad a -> Either AnalysisError (s, a)
 -- runAnalysis am =
 --   runIdentity (runStateT)
@@ -47,10 +65,18 @@ data AnalysisState
   , globalEnv :: GlobalEnvironment Form
   }
 
--- createLabelMap :: Form -> Map Label Form
--- createLabelMap f =
---   let labels = snd (runWriter $ getLabels f)
---   in fromList labels
+initialState :: Form -> AnalysisState
+initialState f =
+  AnalysisState
+  { labelMap = createLabelMap f
+  , localEnv = createEmptyEnv
+  , globalEnv = createEmptyGlobalEnv
+  }
+
+createLabelMap :: Form -> Map Label Form
+createLabelMap f =
+  let labels = snd (runWriter $ getLabels f)
+  in fromList labels
 
 getLabels :: Form -> Writer [(Label, Form)] ()
 getLabels f =
@@ -59,8 +85,10 @@ getLabels f =
     Lambda _ bodies -> do
       mapM_ getLabels bodies
       tell [(lab, f)]
-    x -> do
+    _ ->
       tell [(lab, f)]
+
+
 
 -- initialGlobal :: GlobalEnvironment Form
 -- initialGlobal =
@@ -79,6 +107,7 @@ data AnalysisError
   = BadNumArguments
   | NotAProcedure
   | UnboundVar
+  deriving (Show)
 
 
 -- I would like the environment to store labels
@@ -89,55 +118,37 @@ data CFAVal
 
 -- runCFA :: Form -> Either AnalysisError ([AnalysisState])
 
-cfa :: Form -> [AnalysisMonad Form]
-cfa f = do
-  let ann = annotation f
-  let sp = pos ann
-  case form f of
-    -- v@Value {} ->
-    --   return v
-    -- Var _ lexAddr -> do
-    --   let test =
-    --         [ do s <- get
-    --              case getValue lexAddr (localEnv s) (globalEnv s) of
-    --                Nothing ->
-    --                  AnalysisMonad $ throwE UnboundVar
-    --                Just val ->
-    --                  return val
-    --         ]
-    --     in traceShowM test >> test
-    -- Quote _ -> undefined
-    -- Lambda fs bs ->
-    --   [ do s <- get
-    --        return . JLProc $ Closure fs bs (localEnv s) sp
-    --   ]
-    -- Let bindings bs ->
-    --   let lambdaPart =
-    --         A ann (Lambda (Formals $ fmap fst bindings) bs)
-    --       expanded =
-    --         A ann (App lambdaPart (fmap snd bindings))
-    --   in cfa expanded
-    TwoIf test true false -> do
-      testEval <- cfa test
-      join [ do trueEval <- cfa true
-                [ testEval >> trueEval ]
-           , do falseEval <- cfa false
-                [ testEval >> falseEval ]
-           ]
-  -- m a -> (a -> m b) -> m b
-      -- [ [testEval] >> cfa true
-      --   , testEval >> cfa false
-      --   ]
-      -- mappend (cfa true) (cfa false)
-    OneIf test true -> do
-      _ <- cfa test
-      cfa true
-    -- Define var body -> do
-    --   undefined
-    App p args -> do
-      argEvals <- fmap cfa args
-      procEval <- cfa p
+-- sweep :: Form -> [AnalysisMonad Form]
 
-
-      undefined
-    _ -> undefined
+evaluate f = do
+  undefined
+  -- let ann = annotation f
+  -- let sp = pos ann
+  -- case form f of
+  --   v@Value {} ->
+  --     return v
+  --   Var _ lexAddr -> do
+  --     let test =
+  --           [ do s <- get
+  --                case getValue lexAddr (localEnv s) (globalEnv s) of
+  --                  Nothing ->
+  --                    AnalysisMonad $ throwE UnboundVar
+  --                  Just val ->
+  --                    return val
+  --           ]
+  --       in traceShowM test >> test
+  --   Quote _ -> undefined
+  --   Lambda fs bs ->
+  --     [ do s <- get
+  --          return . JLProc $ Closure fs bs (localEnv s) sp
+  --     ]
+  --   Define var body -> do
+  --     [ do undefined
+  --       ]
+  --   App p args -> do
+  --     argEvals <- fmap evaluate args
+  --     procEval <- evaluate p
+  --     undefined
+  --   x -> do
+  --     traceShowM x
+  --     undefined

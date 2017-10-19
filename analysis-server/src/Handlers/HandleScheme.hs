@@ -3,8 +3,8 @@
 
 module Handlers.HandleScheme where
 
-import Scheme.JLParse
-import Scheme.JLTypes
+import Scheme.Parse
+import Scheme.Types
 import ServerTypes
 import ServerHelpers
 
@@ -42,7 +42,7 @@ handleScheme = do
                              .= unpack mcode
                            ]
     Just (Scheme code) ->
-      case runJLParse code of
+      case runParse code of
         Right prog -> do
           setResponseOk
           respondJSON $ object ["code" .= show prog]

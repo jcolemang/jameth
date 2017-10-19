@@ -2,7 +2,7 @@
 module Analysis.Analyzers.AppendAnalysis where
 
 import Analysis.AnalysisTypes
-import Scheme.JLTypes
+import Scheme.Types
 
 -- appendAnalysis :: Form -> AnalysisMonad ()
 -- appendAnalysis x@(JLApp (Var "append" appendAddr asp)

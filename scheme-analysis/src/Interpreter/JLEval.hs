@@ -2,16 +2,16 @@
 module JLEval where
 
 import Control.Monad
-import JLTypes
 import Control.Monad.Trans.State
 import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Except
 import Data.Map
-import Control.Lens
 
 
 -- | Primitive procudures
+
+
 
 -- jlAdd2 (JLInt a) (JLInt b) = return . JLInt $ a + b
 -- jlAdd2 (JLNum a) (JLInt b) = return . JLNum $ a + fromInteger b

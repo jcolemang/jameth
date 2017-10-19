@@ -1,25 +1,25 @@
 
-module Scheme.JLTokenize (readJL,
-                         ) where
+module Scheme.Tokenize (tokenize,
+                       ) where
 
 import Scheme.JLParsingTypes
-import Scheme.JLTypes
+import Scheme.Types
 
 import Text.ParserCombinators.Parsec
 import Data.List
 import Control.Monad
 
-readJL :: String -> Either JLParseError [JLTree]
-readJL =
-  tokenizeJL . removeAllComments
+tokenize :: String -> Either JLParseError [JLTree]
+tokenize =
+  tokenize' . removeAllComments
 
-tokenizeJL :: String -> Either JLParseError [JLTree]
-tokenizeJL s =
+tokenize' :: String -> Either JLParseError [JLTree]
+tokenize' s =
   case parse (whitespaces *> many parseTree <* whitespaces <* eof) "jameth" s of
     Left p ->
       let ep = errorPos p
-          pos = SP (sourceLine ep) (sourceColumn ep)
-      in Left $ JLParseError pos
+          posn = SP (sourceLine ep) (sourceColumn ep)
+      in Left $ JLParseError posn
     Right v -> return v
 
 removeComments :: String -> String
@@ -107,19 +107,19 @@ parseConstant
 
 parseBool :: Parser Constant
 parseBool
-   = try (string "#t" >>= const (return . JLBool $ True))
-  <|> try (string "#f" >>= const (return . JLBool $ False))
+   = try (string "#t" >>= const (return . SBool $ True))
+  <|> try (string "#f" >>= const (return . SBool $ False))
 
 parseString :: Parser Constant
 parseString = do
   _ <- char '"'
   val <- many $ noneOf "\""
   _ <- char '"'
-  return $ JLStr val
+  return $ SStr val
 
 parseInt :: Parser Constant
 parseInt =
-  JLInt . read <$> many1 digit
+  SInt . read <$> many1 digit
 
 parseDouble :: Parser Constant
 parseDouble =
@@ -130,11 +130,11 @@ parseLeftDouble = do
   nums <- many1 digit
   decimalPoint <- string "."
   decimals <- flip mappend "0" <$> many digit
-  return . JLNum . read $ mappend nums $ mappend decimalPoint decimals
+  return . SNum . read $ mappend nums $ mappend decimalPoint decimals
 
 parseRightDouble :: Parser Constant
 parseRightDouble = do
   nums <- mappend "0" <$> many digit
   decimalPoint <- string "."
   decimals <- many1 digit
-  return . JLNum . read $ mappend nums $ mappend decimalPoint decimals
+  return . SNum . read $ mappend nums $ mappend decimalPoint decimals

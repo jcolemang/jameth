@@ -1,7 +1,7 @@
 
 module Scheme.JLPrimitiveProcs where
 
-import Scheme.JLTypes
+import Scheme.Types
 
 primitiveProcedures :: [(String, Closure)]
 primitiveProcedures =

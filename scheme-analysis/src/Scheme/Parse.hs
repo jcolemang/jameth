@@ -1,8 +1,8 @@
 
-module Scheme.JLParse where
+module Scheme.Parse where
 
-import Scheme.JLTokenize
-import Scheme.JLTypes
+import Scheme.Tokenize
+import Scheme.Types
 import Scheme.JLParsingTypes
 import {-# SOURCE #-} Scheme.JLPrimitiveSyntax
 import Scheme.JLPrimitiveProcs
@@ -12,6 +12,7 @@ import Control.Monad.Except
 import Control.Monad.Trans.Except
 import Control.Monad.Identity
 import Control.Arrow (second)
+import Debug.Trace
 
 
 invalidSyntax :: JLTree -> Maybe String -> SourcePos -> ParseMonad a
@@ -20,14 +21,10 @@ invalidSyntax _ Nothing sp =
 invalidSyntax _ (Just s) sp =
   ParseMonad . throwE $ JLInvalidSyntax s sp
 
-unboundVariable :: JLTree -> String -> SourcePos -> ParseMonad a
-unboundVariable _ name sp =
-  ParseMonad . throwE $ JLUndefinedVariable name sp
-
 getNums :: [Value] -> Maybe [Double]
 getNums vals =
   let maybeNum n = case n of
-                     JLConst (JLNum x) -> Just x
+                     Const (SNum x) -> Just x
                      _ -> Nothing
   in mapM maybeNum vals
 
@@ -63,20 +60,28 @@ addGlobalLabel s f = do
 
 primitiveDefinitions :: ParseMonad Program
 primitiveDefinitions =
-  let fs = map (second $ Value . JLProc) primitiveProcedures
+  let fs = map (second $ Value . Proc) primitiveProcedures
   in Program <$> mapM (uncurry addGlobalLabel) fs
 
 initialGlobal :: GlobalEnvironment BoundValue
 initialGlobal =
   createGlobalEnv $ fmap (second BSyntax) primitiveSyntax
 
-runJLParse :: String -> Either JLParseError Program
-runJLParse s =
+runParse :: String -> Either JLParseError Program
+runParse s =
   let initGlobal = initialState initialGlobal
       addDefs = liftM2 mappend primitiveDefinitions
   in do
-    tree <- readJL s
+    tree <- tokenize s
     fst $ runIdentity (runStateT (runExceptT (runParser (addDefs $ parse tree)))
+                                 initGlobal)
+
+runParseNoInit :: String -> Either JLParseError Program
+runParseNoInit s =
+  let initGlobal = initialState initialGlobal
+  in do
+    tree <- tokenize s
+    fst $ runIdentity (runStateT (runExceptT (runParser (parse tree)))
                                  initGlobal)
 
 parse :: [JLTree] -> ParseMonad Program
@@ -89,37 +94,46 @@ expandSyntax (BuiltIn _ f) = f
 parseJLForm :: JLTree -> ParseMonad Form
 parseJLForm (JLVal v p) = do
   l <- getLabel
-  return $ A (Ann p l) (Value (JLConst v))
+  return $ A (Ann p l) (Value (Const v))
+
 parseJLForm tree@(JLId x sp) = do
   local <- localEnv <$> get
   global <- globalEnv <$> get
   l <- getLabel
   case getAddress x local global of
     Nothing ->
-      unboundVariable tree x sp
+      return $ A (Ann sp l) (Var x (globalReference x))
     Just (BSyntax (BuiltIn name _), _) ->
       invalidSyntax tree (Just name) sp
     Just (_, addr) ->
       return $ A (Ann sp l) (Var x addr)
+
 parseJLForm tree@(JLSList [] sp) =
   invalidSyntax tree Nothing sp
-parseJLForm tree@(JLSList (JLId x idsp:rest) sp) = do
+
+-- A separate case is needed so that syntax can be dealt with
+parseJLForm tree@(JLSList (ratorT@(JLId x idsp):rest) sp) = do
   local <- localEnv <$> get
   global <- globalEnv <$> get
+  l <- getLabel
   case getAddress x local global of
-    Nothing ->
-      unboundVariable tree x sp
+    Nothing -> do
+      l' <- getLabel
+      let rator = A (Ann idsp l) (Var x (globalReference x))
+      rands <- mapM parseJLForm rest
+      return $ A (Ann sp l') (App rator rands)
     Just (val, _) ->
       case val of
         BVal -> do
           rexps <- mapM parseJLForm rest
-          rx <- parseJLForm $ JLId x idsp
-          l <- getLabel
-          return $ A (Ann idsp l) (App rx rexps)
+          rx <- parseJLForm ratorT
+          l' <- getLabel
+          return $ A (Ann idsp l') (App rx rexps)
         BSyntax s ->
           expandSyntax s tree
         _ ->
           undefined
+
 parseJLForm (JLSList (f:rest) sp) = do
   fform <- parseJLForm f
   rforms <- mapM parseJLForm rest

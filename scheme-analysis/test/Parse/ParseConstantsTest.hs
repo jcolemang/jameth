@@ -1,54 +1,54 @@
 
 module Parse.ParseConstantsTest where
 
-import Scheme.JLParse
-import Scheme.JLTypes
+import Scheme.Parse
+import Scheme.Types
 
 import Test.HUnit
 
 
 getConstant :: Either t Program -> Maybe Constant
-getConstant (Right (Program [Value (JLConst x) _])) = Just x
+getConstant (Right (Program [A _ (Value (Const x))])) = Just x
 getConstant _ = Nothing
 
 
 testIntConstants :: Test
 testIntConstants = TestCase $ do
-  let r1 = getConstant (runJLParse "5")
-  assertEqual "Basic Int Constant" r1 (Just $ JLInt 5)
+  let r1 = getConstant (runParseNoInit "5")
+  assertEqual "Basic Int Constant" (Just $ SInt 5) r1
 
-  let r2 = getConstant (runJLParse "123")
-  assertEqual "Multi-digit Int Constant" r2 (Just $ JLInt 123)
+  let r2 = getConstant (runParseNoInit "123")
+  assertEqual "Multi-digit Int Constant" (Just $ SInt 123) r2
 
 testNumConstants :: Test
 testNumConstants = TestCase $ do
-  let r1 = getConstant (runJLParse "1.0")
-  assertEqual "Basic Num Constant" r1 (Just $ JLNum 1)
+  let r1 = getConstant (runParseNoInit "1.0")
+  assertEqual "Basic Num Constant" (Just $ SNum 1) r1
 
-  let r2 = getConstant (runJLParse "1.5")
-  assertEqual "Basic Num Constant" r2 (Just $ JLNum 1.5)
+  let r2 = getConstant (runParseNoInit "1.5")
+  assertEqual "Basic Num Constant" (Just $ SNum 1.5) r2
 
-  let r3 = getConstant (runJLParse "1.")
-  assertEqual "Right Num Constant" r3 (Just $ JLNum 1)
+  let r3 = getConstant (runParseNoInit "1.")
+  assertEqual "Right Num Constant" (Just $ SNum 1) r3
 
-  let r4 = getConstant (runJLParse ".5")
-  assertEqual "Left Num Constant" r4 (Just $ JLNum 0.5)
+  let r4 = getConstant (runParseNoInit ".5")
+  assertEqual "Left Num Constant" (Just $ SNum 0.5) r4
 
 testBoolConstants :: Test
 testBoolConstants = TestCase $ do
-  let r1 = getConstant (runJLParse "#t")
-  assertEqual "Basic #t" r1 (Just $ JLBool True)
+  let r1 = getConstant (runParseNoInit "#t")
+  assertEqual "Basic #t" (Just $ SBool True) r1
 
-  let r2 = getConstant (runJLParse "#f")
-  assertEqual "Basic #f" r2 (Just $ JLBool False)
+  let r2 = getConstant (runParseNoInit "#f")
+  assertEqual "Basic #f" (Just $ SBool False) r2
 
 testStringConstants :: Test
 testStringConstants = TestCase $ do
-  let r1 = getConstant (runJLParse "\"Hello\"")
-  assertEqual "Basic String" r1 (Just $ JLStr "Hello")
+  let r1 = getConstant (runParseNoInit "\"Hello\"")
+  assertEqual "Basic String" (Just $ SStr "Hello") r1
 
-  let r2 = getConstant (runJLParse "\"Hello \n my name is coleman\"")
-  assertEqual "Another String" r2 (Just $ JLStr "Hello \n my name is coleman")
+  let r2 = getConstant (runParseNoInit "\"Hello \n my name is coleman\"")
+  assertEqual "Another String" (Just $ SStr "Hello \n my name is coleman") r2
 
 
 tests :: [Test]

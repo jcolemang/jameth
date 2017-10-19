@@ -1,5 +1,7 @@
 
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Scheme.JLParsingTypes
   ( modify', modify
@@ -14,7 +16,7 @@ module Scheme.JLParsingTypes
   )
 where
 
-import Scheme.JLTypes
+import Scheme.Types
 
 import Control.Monad.State
 import Control.Monad.Except
@@ -47,6 +49,12 @@ data ParseState
   , labelNum :: Int
   } deriving (Show)
 
+instance Environment ParseMonad BoundValue where
+  getLocalEnv = localEnv <$> get
+  getGlobalEnv = globalEnv <$> get
+  putLocalEnv l = modify $ \s -> s { localEnv = l }
+  putGlobalEnv g = modify $ \s -> s { globalEnv = g }
+
 initialState :: GlobalEnvironment BoundValue -> ParseState
 initialState g =
   ParseState
@@ -63,7 +71,6 @@ getLabel = do
 
 data JLParseError
   = JLParseError SourcePos
-  | JLUndefinedVariable String SourcePos
   | JLInvalidSyntax String SourcePos
   deriving (Show, Eq)
 

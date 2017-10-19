@@ -8,7 +8,7 @@ where
 
 import Analysis.AnalysisTypes
 import Analysis.Analyzers.AppendAnalysis
-import Scheme.JLTypes
+import Scheme.Types
 
 programAnalysis :: Program -> [LogMessage]
 programAnalysis p =

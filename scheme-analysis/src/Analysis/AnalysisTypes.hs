@@ -9,7 +9,7 @@ module Analysis.AnalysisTypes
   )
 where
 
-import Scheme.JLTypes
+import Scheme.Types
 
 import Control.Monad.Writer
 import Control.Monad.Identity
