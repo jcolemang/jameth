@@ -1,7 +1,7 @@
 
 module Scheme.JLPrimitiveSyntax where
 
-import Scheme.JLParsingTypes
+import Scheme.ParseTypes
 import Scheme.Types
 import Scheme.Parse
 

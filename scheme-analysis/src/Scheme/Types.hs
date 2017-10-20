@@ -4,6 +4,8 @@
 
 module Scheme.Types
   ( displayForm
+  , displayProgram
+  , displayValue
   , getAddress
   , isValue
   , isVar
@@ -49,6 +51,7 @@ module Scheme.Types
 where
 
 import Data.Map hiding (map, foldl, foldl')
+import Control.Monad
 -- import Data.List hiding (insert)
 
 data Constant
@@ -78,6 +81,11 @@ displayFormals (Formals ids) =
 data Program
   = Program [Form]
   deriving (Show)
+
+displayProgram :: Program -> String
+displayProgram (Program fs) =
+  join $ displayForm <$> fs
+
 
 instance Monoid Program where
   mempty = Program []
@@ -207,15 +215,19 @@ displayForm :: Form -> String
 displayForm (A _ (Value val)) =
   displayValue val
 displayForm (A _ (Var name addr)) =
-  "(" ++ name ++ ":" ++ show addr ++ ")"
+  -- "(" ++ name ++ ":" ++ show addr ++ ")"
+  name
 displayForm (A _ (Quote val)) =
   "(quote " ++ show val ++ ")"
 displayForm (A _ (Lambda formals bodies)) =
   let bs = unwords (map displayForm bodies)
   in "(lambda " ++ displayFormals formals ++ " " ++ bs ++ ")"
 displayForm (A _ (App f args)) =
-  let as = unwords (map displayForm args)
-  in "(" ++ displayForm f ++ " " ++ as ++ ")"
+  case unwords (map displayForm args) of
+    [] -> -- no argument application
+      "(" ++ displayForm f ++ ")"
+    as ->
+      "(" ++ displayForm f ++ " " ++ as ++ ")"
 displayForm (A _ (Define name f)) =
   "(define " ++ name ++ " " ++ displayForm f ++ ")\n"
 

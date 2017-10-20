@@ -5,7 +5,7 @@ import Scheme.Types
 import Interpreter.Types
 import Interpreter.PrimProcs
 
-import Debug.Trace
+-- import Debug.Trace
 
 -- | Top Level Definitions
 

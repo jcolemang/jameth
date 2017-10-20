@@ -3,7 +3,7 @@ module Scheme.Parse where
 
 import Scheme.Tokenize
 import Scheme.Types
-import Scheme.JLParsingTypes
+import Scheme.ParseTypes
 import {-# SOURCE #-} Scheme.JLPrimitiveSyntax
 import Scheme.JLPrimitiveProcs
 
@@ -12,14 +12,15 @@ import Control.Monad.Except
 import Control.Monad.Trans.Except
 import Control.Monad.Identity
 import Control.Arrow (second)
+
 import Debug.Trace
 
 
 invalidSyntax :: JLTree -> Maybe String -> SourcePos -> ParseMonad a
 invalidSyntax _ Nothing sp =
-  ParseMonad . throwE $ JLInvalidSyntax "" sp
+  ParseMonad . throwE $ InvalidSyntax "" sp
 invalidSyntax _ (Just s) sp =
-  ParseMonad . throwE $ JLInvalidSyntax s sp
+  ParseMonad . throwE $ InvalidSyntax s sp
 
 getNums :: [Value] -> Maybe [Double]
 getNums vals =
@@ -67,7 +68,7 @@ initialGlobal :: GlobalEnvironment BoundValue
 initialGlobal =
   createGlobalEnv $ fmap (second BSyntax) primitiveSyntax
 
-runParse :: String -> Either JLParseError Program
+runParse :: String -> Either ParseError Program
 runParse s =
   let initGlobal = initialState initialGlobal
       addDefs = liftM2 mappend primitiveDefinitions
@@ -76,7 +77,7 @@ runParse s =
     fst $ runIdentity (runStateT (runExceptT (runParser (addDefs $ parse tree)))
                                  initGlobal)
 
-runParseNoInit :: String -> Either JLParseError Program
+runParseNoInit :: String -> Either ParseError Program
 runParseNoInit s =
   let initGlobal = initialState initialGlobal
   in do

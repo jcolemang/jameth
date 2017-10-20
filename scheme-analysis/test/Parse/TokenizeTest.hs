@@ -2,7 +2,7 @@
 module Parse.TokenizeTest where
 
 import Scheme.Tokenize
-import Scheme.JLParsingTypes
+import Scheme.ParseTypes
 import Scheme.Types
 
 import Test.HUnit

@@ -2,24 +2,24 @@
 module Scheme.Tokenize (tokenize,
                        ) where
 
-import Scheme.JLParsingTypes
+import Scheme.ParseTypes
 import Scheme.Types
 
-import Text.ParserCombinators.Parsec
+import Text.ParserCombinators.Parsec hiding (ParseError)
 import Data.List
 import Control.Monad
 
-tokenize :: String -> Either JLParseError [JLTree]
+tokenize :: String -> Either ParseError [JLTree]
 tokenize =
   tokenize' . removeAllComments
 
-tokenize' :: String -> Either JLParseError [JLTree]
+tokenize' :: String -> Either ParseError [JLTree]
 tokenize' s =
   case parse (whitespaces *> many parseTree <* whitespaces <* eof) "jameth" s of
     Left p ->
       let ep = errorPos p
           posn = SP (sourceLine ep) (sourceColumn ep)
-      in Left $ JLParseError posn
+      in Left $ ParseError posn
     Right v -> return v
 
 removeComments :: String -> String
@@ -103,7 +103,7 @@ parseConstant
    = parseBool
   <|> parseString
   <|> try parseDouble  -- same start as parseInt, should not consume
-  <|> parseInt
+  <|> try parseInt
 
 parseBool :: Parser Constant
 parseBool
@@ -118,8 +118,13 @@ parseString = do
   return $ SStr val
 
 parseInt :: Parser Constant
-parseInt =
-  SInt . read <$> many1 digit
+parseInt = do
+  neg <- optionMaybe (char '-')
+  case neg of
+    Just _ ->
+      SInt . (*(-1)) . read <$> many1 digit
+    Nothing ->
+      SInt . read <$> many1 digit
 
 parseDouble :: Parser Constant
 parseDouble =

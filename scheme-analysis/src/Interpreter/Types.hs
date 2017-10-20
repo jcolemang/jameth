@@ -14,6 +14,8 @@ data EvalError
   = NonProcedure SourcePos Value
   | UndefinedVariable SourcePos String
   | TypeError SourcePos
+  | ArithError SourcePos
+  | WrongNumArgs SourcePos
   deriving ( Show )
 
 data EvalState
@@ -51,6 +53,14 @@ typeError sp =
 undefinedVariable :: SourcePos -> String -> EvalMonad a
 undefinedVariable sp var =
   throwError $ UndefinedVariable sp var
+
+wrongNumArgs :: SourcePos -> EvalMonad a
+wrongNumArgs sp =
+  throwError $ WrongNumArgs sp
+
+arithmeticError :: SourcePos -> EvalMonad a
+arithmeticError sp =
+  throwError $ ArithError sp
 
 instance Environment EvalMonad Value where
   getLocalEnv    = localEnv  <$> get

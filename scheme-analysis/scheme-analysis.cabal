@@ -23,7 +23,7 @@ library
                      , DataFlow.DataFlow
                      , Scheme.Parse
                      , Scheme.Types
-                     , Scheme.JLParsingTypes
+                     , Scheme.ParseTypes
                      , Scheme.ReadSource
                      , Interpreter.Types
                      , Interpreter.Evaluate
@@ -53,6 +53,7 @@ test-suite scheme-analysis-test
                      , scheme-analysis
   other-modules:       Parse.ParseConstantsTest
                      , Parse.ParseQuoteTest
+                     , Parse.ParseLambdaTest
                      , Parse.ParseApplicationTest
                      , Parse.TokenizeTest
                      , Parse.Helpers

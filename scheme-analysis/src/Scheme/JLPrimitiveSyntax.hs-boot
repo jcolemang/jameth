@@ -1,6 +1,6 @@
 module Scheme.JLPrimitiveSyntax
 where
 
-import Scheme.JLParsingTypes
+import Scheme.ParseTypes
 
 primitiveSyntax :: [(String, JLSyntax)]
