@@ -5,18 +5,23 @@ import Scheme.Types
 import Interpreter.Types
 import Interpreter.PrimProcs
 
--- import Debug.Trace
 
 -- | Top Level Definitions
 
 execEval :: Program -> IO (Either EvalError Value)
-execEval prog =
-  runEval (evaluate prog)
+execEval =
+  execEvalEnv defaultGlobalEnv
+
+execEvalEnv :: GlobalEnvironment Value -> Program -> IO (Either EvalError Value)
+execEvalEnv env prog =
+  runEval env (evaluate prog)
 
 evaluate :: Program -> EvalMonad Value
 evaluate (Program forms) = do
   vals <- mapM evaluateForm forms
   return $ last vals
+
+
 
 -- | Helpers
 
@@ -24,8 +29,8 @@ evaluateForm :: Form -> EvalMonad Value
 evaluateForm (A ann f) =
   let sp = pos ann
   in case f of
-       Value v ->
-         return v
+       Const v ->
+         return $ VConst v
        Var s addr -> do
          envVal <- getEnvValue addr
          case envVal of
@@ -35,24 +40,24 @@ evaluateForm (A ann f) =
              return val
        Lambda formals bodies -> do
          l <- getLocalEnv
-         return . Proc $ Closure formals bodies l sp
+         return . VProc $ Closure formals bodies l sp
        App ratorForm randForms -> do
          rator <- evaluateForm ratorForm
          rands <- mapM evaluateForm randForms
          case rator of
-           Proc closure ->
+           VProc closure ->
              applyClosure sp closure rands
            v ->
              nonProcedure sp v
        Define name body -> do
-         putInGlobalEnv name Undefined
+         putInGlobalEnv name VUndefined
          val <- evaluateForm body
          putInGlobalEnv name val
-         return $ Const SVoid
-       _ ->
-         error "Not yet implemented"
+         return $ VConst SVoid
+       v ->
+         error $ "Not yet implemented: " ++ show v
 
-applyClosure :: SourcePos -> Closure -> [Value] -> EvalMonad Value
+applyClosure :: SourcePos -> Closure Value -> [Value] -> EvalMonad Value
 applyClosure sp closure rands =
   case closure of
     Closure (Formals ids) bodies env _ ->

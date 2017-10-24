@@ -4,6 +4,7 @@ module Evaluation.EvaluationTest where
 import Scheme.Types
 import Scheme.Parse
 import Interpreter.Evaluate
+import Interpreter.Types
 
 import Test.HUnit
 
@@ -30,9 +31,9 @@ basicApplicationTests = TestCase $ do
   let prog2 = "(+ 1 2 3)"
   let prog3 = "(+ 1 (* 2 4))"
 
-  testProg "Add no args"       prog1 (Const $ SInt 0)
-  testProg "Add with args"     prog2 (Const $ SInt 6)
-  testProg "Two procs"         prog3 (Const $ SInt 9)
+  testProg "Add no args"       prog1 (VConst $ SInt 0)
+  testProg "Add with args"     prog2 (VConst $ SInt 6)
+  testProg "Two procs"         prog3 (VConst $ SInt 9)
 
 lambdaTests :: Test
 lambdaTests = TestCase $ do
@@ -43,12 +44,12 @@ lambdaTests = TestCase $ do
   let prog5 = "((lambda (lambda) (+ lambda 10)) 15 )"
   let prog6 = "((lambda (lambda) (lambda 10)) (lambda (lambda) (+ lambda 1 2 3)))"
 
-  testProg "Basic lambda"      prog1 (Const $ SInt 5)
-  testProg "Basic lambda args" prog2 (Const $ SInt 100)
-  testProg "Nested lambdas"    prog3 (Const $ SInt 5)
-  testProg "More lambdas"      prog4 (Const $ SInt 5)
-  testProg "Bad naming"        prog5 (Const $ SInt 25)
-  testProg "Extra bad naming"  prog6 (Const $ SInt 16)
+  testProg "Basic lambda"      prog1 (VConst $ SInt 5)
+  testProg "Basic lambda args" prog2 (VConst $ SInt 100)
+  testProg "Nested lambdas"    prog3 (VConst $ SInt 5)
+  testProg "More lambdas"      prog4 (VConst $ SInt 5)
+  testProg "Bad naming"        prog5 (VConst $ SInt 25)
+  testProg "Extra bad naming"  prog6 (VConst $ SInt 16)
 
 tests :: [Test]
 tests =

@@ -1,5 +1,5 @@
 
-module Scheme.JLPrimitiveSyntax where
+module Scheme.PrimitiveSyntax where
 
 import Scheme.ParseTypes
 import Scheme.Types
@@ -9,6 +9,20 @@ import Debug.Trace
 
 whoops :: a
 whoops = error "An error was made in the parser. Please report this as a bug."
+
+expandLambda :: JLTree -> ParseMonad Form
+expandLambda ts =
+  case ts of
+    JLSList [_, JLSList ids _, bodies] sp ->
+      case getIds ids of
+        Just jids -> do
+          extendEnv $ map (\x -> (x, BVal)) jids
+          parsedBodies <- parseJLForm bodies
+          popEnv
+          l <- getLabel
+          return $ A (Ann sp l) (Lambda (Formals jids) [parsedBodies])
+        Nothing ->
+          invalidSyntax ts (Just "lambda") sp
 
 primitiveSyntax :: [(String, JLSyntax)]
 primitiveSyntax =
@@ -26,22 +40,8 @@ primitiveSyntax =
             whoops
 
     )
-  , ("lambda", BuiltIn "lambda" $
-    \ts ->
-      case ts of
-        JLSList [_, JLSList ids _, bodies] sp ->
-          case getIds ids of
-            Just jids -> do
-              extendEnv $ map (\x -> (x, BVal)) jids
-              parsedBodies <- parseJLForm bodies
-              popEnv
-              l <- getLabel
-              return $ A (Ann sp l) (Lambda (Formals jids) [parsedBodies])
-            Nothing ->
-              invalidSyntax ts (Just "lambda") sp
-        _ ->
-          undefined
-    )
+  , ("lambda", BuiltIn "lambda" expandLambda)
+  , ("λ", BuiltIn "Lambda" expandLambda)
   , ("let", BuiltIn "let" $
     \ts@(JLSList (_:assgns:bs) sp) ->
       case getPairs assgns of
@@ -75,24 +75,24 @@ primitiveSyntax =
         _ ->
           whoops
     )
-  , ("quote", BuiltIn "quote" $
-    let quote x =
-          case x of
-            JLSList vals _ ->
-              VList $ map quote vals
-            JLVal val _ ->
-              Const val
-            JLId s _ ->
-              Const $ SSymbol s
-    in \x ->
-         case x of
-           JLSList [_, val] sp -> do
-             l <- getLabel
-             return $ A (Ann sp l) (Quote $ quote val)
-             -- return . flip JLQuote sp . quote $ val
-           JLSList _ sp ->
-             invalidSyntax x (Just "quote") sp
-           _ ->
-             whoops
-    )
+  -- , ("quote", BuiltIn "quote" $
+  --   let quote x =
+  --         case x of
+  --           JLSList vals _ ->
+  --             VList $ map quote vals
+  --           JLVal val _ ->
+  --             Const val
+  --           JLId s _ ->
+  --             Const $ SSymbol s
+  --   in \x ->
+  --        case x of
+  --          JLSList [_, val] sp -> do
+  --            l <- getLabel
+  --            return $ A (Ann sp l) (Quote $ quote val)
+  --            -- return . flip JLQuote sp . quote $ val
+  --          JLSList _ sp ->
+  --            invalidSyntax x (Just "quote") sp
+  --          _ ->
+  --            whoops
+  --   )
   ]

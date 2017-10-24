@@ -7,7 +7,7 @@
 module DataFlow.DataFlow where
 
 import Scheme.Types
-import Scheme.JLPrimitiveProcs
+import Scheme.PrimitiveProcedures
 
 import Control.Monad.State
 import Control.Monad.Except
@@ -45,10 +45,54 @@ instance Environment AnalysisMonad (Annotated Annotation RawForm) where
   putLocalEnv l = modify $ \s -> s { localEnv = l }
   putGlobalEnv g = modify $ \s -> s { globalEnv = g }
 
+data AbstClosure
+  = AbstClosure Formals Bodies (LocalEnvironment AbstractValue)
+
+data AbstractValue
+  = AbstList
+  | AbstProc AbstClosure
+  | AbstBool
+  | AbstNum
+  | AbstStr
+  | AbstNYI
+
+
+allPossibleValues :: Program -> AnalysisMonad a
+allPossibleValues prog =
+  undefined
+
+data AnalysisState
+  = AnalysisState
+  { labelMap :: Map Label Form
+  , localEnv :: LocalEnvironment Form
+  , globalEnv :: GlobalEnvironment Form
+  }
+
+allPossible :: Form -> AnalysisMonad [AbstractValue]
+allPossible (A _ (Const (SStr _))) =
+  return [ AbstStr ]
+allPossible (A _ (Const (SBool _))) =
+  return [ AbstBool ]
+allPossible (A _ (Const (SInt _))) =
+  return [ AbstNum ]
+allPossible (A _ (Const (SNum _))) =
+  return [ AbstNum ]
+allPossible (A _ (Const _)) =
+  return [ AbstNYI ]
+allPossible (A _ (TwoIf _ true false)) = do
+  trueBranch <- allPossible true
+  falseBranch <- allPossible false
+  return $ trueBranch ++ falseBranch
+allPossiblle (A _ (Lambda fs bods)) = do
+  undefined
+  -- env <- getLocalEnv
+  -- return (AbstProc $ Closure fs env
+
+
 
 -- runDataFlow :: Form -> [Either AnalysisError Program]
-runDataFlow f =
-  undefined
+-- runDataFlow f =
+--   undefined
   -- let initGlobal = initialState f
   --     exec m = fst $ runIdentity (runStateT (runExceptT (runAnalysis m))
   --                                 initGlobal)
@@ -57,13 +101,6 @@ runDataFlow f =
 -- runAnalysis :: AnalysisMonad a -> Either AnalysisError (s, a)
 -- runAnalysis am =
 --   runIdentity (runStateT)
-
-data AnalysisState
-  = AnalysisState
-  { labelMap :: Map Label Form
-  , localEnv :: LocalEnvironment Form
-  , globalEnv :: GlobalEnvironment Form
-  }
 
 initialState :: Form -> AnalysisState
 initialState f =
@@ -113,15 +150,15 @@ data AnalysisError
 -- I would like the environment to store labels
 
 
-data CFAVal
-  = Foo
+-- data CFAVal
+--   = Foo
 
 -- runCFA :: Form -> Either AnalysisError ([AnalysisState])
 
 -- sweep :: Form -> [AnalysisMonad Form]
 
-evaluate f = do
-  undefined
+-- evaluate f = do
+--   undefined
   -- let ann = annotation f
   -- let sp = pos ann
   -- case form f of

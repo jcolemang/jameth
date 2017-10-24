@@ -6,9 +6,18 @@
 module Interpreter.Types where
 
 import Scheme.Types
+import Scheme.PrimitiveProcedures
 
 import Control.Monad.State
 import Control.Monad.Except
+import Control.Arrow ( second )
+
+data Value
+  = VConst Constant
+  | VProc (Closure Value)
+  | VList [Value]
+  | VUndefined
+  deriving ( Show, Eq )
 
 data EvalError
   = NonProcedure SourcePos Value
@@ -34,11 +43,15 @@ newtype EvalMonad a
              , MonadError EvalError
              )
 
-runEval :: EvalMonad a -> IO (Either EvalError a)
-runEval m =
+defaultGlobalEnv :: GlobalEnvironment Value
+defaultGlobalEnv =
+  createGlobalEnv (fmap (second VProc) primitiveProcedures)
+
+runEval :: GlobalEnvironment Value -> EvalMonad a -> IO (Either EvalError a)
+runEval gEnv m =
   let initialState = EvalState
                      { localEnv = createEmptyEnv
-                     , globalEnv = createEmptyGlobalEnv
+                     , globalEnv = gEnv
                      }
   in fst <$> runStateT (runExceptT (eval m)) initialState
 

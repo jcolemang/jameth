@@ -1,9 +1,9 @@
 
-module Scheme.JLPrimitiveProcs where
+module Scheme.PrimitiveProcedures where
 
 import Scheme.Types
 
-primitiveProcedures :: [(String, Closure)]
+primitiveProcedures :: [(String, Closure a)]
 primitiveProcedures =
   [ ("+",      Primitive "+" $ AnyNum)
   , ("=",      Primitive "=" $ AtLeast 1)

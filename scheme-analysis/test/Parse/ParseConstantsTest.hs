@@ -8,7 +8,7 @@ import Test.HUnit
 
 
 getConstant :: Either t Program -> Maybe Constant
-getConstant (Right (Program [A _ (Value (Const x))])) = Just x
+getConstant (Right (Program [A _ (Const x)])) = Just x
 getConstant _ = Nothing
 
 

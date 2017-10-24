@@ -28,8 +28,8 @@ library
                      , Interpreter.Types
                      , Interpreter.Evaluate
                      , Scheme.Tokenize
-  other-modules:       Scheme.JLPrimitiveProcs
-                     , Scheme.JLPrimitiveSyntax
+  other-modules:       Scheme.PrimitiveProcedures
+                     , Scheme.PrimitiveSyntax
                      , Interpreter.PrimProcs
   build-depends:       base >= 4.7 && < 5
                      , parsec

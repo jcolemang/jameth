@@ -1,4 +1,4 @@
-module Scheme.JLPrimitiveSyntax
+module Scheme.PrimitiveSyntax
 where
 
 import Scheme.ParseTypes

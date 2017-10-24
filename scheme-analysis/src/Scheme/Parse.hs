@@ -4,8 +4,8 @@ module Scheme.Parse where
 import Scheme.Tokenize
 import Scheme.Types
 import Scheme.ParseTypes
-import {-# SOURCE #-} Scheme.JLPrimitiveSyntax
-import Scheme.JLPrimitiveProcs
+import {-# SOURCE #-} Scheme.PrimitiveSyntax
+import Scheme.PrimitiveProcedures
 
 import Control.Monad.State
 import Control.Monad.Except
@@ -22,10 +22,10 @@ invalidSyntax _ Nothing sp =
 invalidSyntax _ (Just s) sp =
   ParseMonad . throwE $ InvalidSyntax s sp
 
-getNums :: [Value] -> Maybe [Double]
+getNums :: [Constant] -> Maybe [Double]
 getNums vals =
   let maybeNum n = case n of
-                     Const (SNum x) -> Just x
+                     (SNum x) -> Just x
                      _ -> Nothing
   in mapM maybeNum vals
 
@@ -59,22 +59,24 @@ addGlobalLabel s f = do
   let ann2 = Ann PrimitiveSource l2
   return $ A ann1 (Define s (A ann2 f))
 
-primitiveDefinitions :: ParseMonad Program
-primitiveDefinitions =
-  let fs = map (second $ Value . Proc) primitiveProcedures
-  in Program <$> mapM (uncurry addGlobalLabel) fs
+-- primitiveDefinitions :: ParseMonad Program
+-- primitiveDefinitions =
+--   let fs = map (second $ Value . Proc) primitiveProcedures
+--   in Program <$> mapM (uncurry addGlobalLabel) fs
 
 initialGlobal :: GlobalEnvironment BoundValue
 initialGlobal =
-  createGlobalEnv $ fmap (second BSyntax) primitiveSyntax
+  createGlobalEnv $ join [ fmap (second BSyntax) primitiveSyntax
+                         , fmap (second (const BVal)) primitiveProcedures
+                         ]
 
 runParse :: String -> Either ParseError Program
 runParse s =
   let initGlobal = initialState initialGlobal
-      addDefs = liftM2 mappend primitiveDefinitions
+      -- addDefs = liftM2 mappend primitiveDefinitions
   in do
     tree <- tokenize s
-    fst $ runIdentity (runStateT (runExceptT (runParser (addDefs $ parse tree)))
+    fst $ runIdentity (runStateT (runExceptT (runParser (parse tree)))
                                  initGlobal)
 
 runParseNoInit :: String -> Either ParseError Program
@@ -95,7 +97,7 @@ expandSyntax (BuiltIn _ f) = f
 parseJLForm :: JLTree -> ParseMonad Form
 parseJLForm (JLVal v p) = do
   l <- getLabel
-  return $ A (Ann p l) (Value (Const v))
+  return $ A (Ann p l) (Const v)
 
 parseJLForm tree@(JLId x sp) = do
   local <- localEnv <$> get

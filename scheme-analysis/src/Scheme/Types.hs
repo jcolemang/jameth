@@ -5,9 +5,9 @@
 module Scheme.Types
   ( displayForm
   , displayProgram
-  , displayValue
+  -- , displayValue
   , getAddress
-  , isValue
+  -- , isValue
   , isVar
   , isQuote
   , isLambda
@@ -30,8 +30,10 @@ module Scheme.Types
   , getEnvValue
   , popEnv
   , withNewEnv
+  , addDepth
 
   , Closure (..)
+  , Bodies
   , Arity (..)
   , Constant (..)
   , SourcePos (..)
@@ -40,7 +42,7 @@ module Scheme.Types
   , Form
   , Formals (..)
   , RawForm (..)
-  , Value (..)
+  -- , Value (..)
   , Program (..)
   , Annotated (..)
   , Annotation (..)
@@ -102,6 +104,10 @@ data LexicalAddress
   | Bound Depth Index
   deriving ( Show )
 
+addDepth :: LexicalAddress -> LexicalAddress
+addDepth (Global _) = Bound (Depth 0) (Index 0)
+addDepth (Bound (Depth d) i) = Bound (Depth (d+1)) i
+
 globalReference :: String -> LexicalAddress
 globalReference = Global
 
@@ -133,9 +139,9 @@ type Form
 type Bodies = [Form]
 
 data RawForm
-  = Value Value
+  = Const Constant
   | Var String LexicalAddress
-  | Quote Value
+  | Quote Form
   | Lambda Formals Bodies
   | Let [(String, Form)] Bodies
   | TwoIf Form Form Form
@@ -156,15 +162,15 @@ data Arity
   | AtLeast Int
   | Cases [Arity]
 
-data Closure
-  = Closure Formals Bodies (LocalEnvironment Value) SourcePos
+data Closure a
+  = Closure Formals Bodies (LocalEnvironment a) SourcePos
   | Primitive String Arity
 
-displayClosure :: Closure -> String
+displayClosure :: Closure a -> String
 displayClosure Closure {} = "<closure>"
 displayClosure Primitive {} = "<primitive>"
 
-instance Eq Closure where
+instance Eq (Closure a) where
   (Closure _ _ _ sp) == (Closure _ _ _ sp') = sp == sp'
   (Primitive name _) == (Primitive name' _) = name == name'
   _ == _ = False
@@ -175,9 +181,9 @@ instance Eq Closure where
 --   | EQuote Value
 --   | ELambda
 
-isValue :: Form -> Bool
-isValue (A _ Value {}) = True
-isValue _ = False
+-- isValue :: Form -> Bool
+-- isValue (A _ Value {}) = True
+-- isValue _ = False
 
 isVar :: Form -> Bool
 isVar (A _ Var {}) = True
@@ -211,9 +217,9 @@ isApp :: Form -> Bool
 isApp (A _ App {}) = True
 isApp _ = False
 
-displayForm :: Form -> String
-displayForm (A _ (Value val)) =
-  displayValue val
+-- displayForm :: Form -> String
+-- displayForm (A _ (Value val)) =
+--   displayValue val
 displayForm (A _ (Var name addr)) =
   -- "(" ++ name ++ ":" ++ show addr ++ ")"
   name
@@ -221,7 +227,8 @@ displayForm (A _ (Quote val)) =
   "(quote " ++ show val ++ ")"
 displayForm (A _ (Lambda formals bodies)) =
   let bs = unwords (map displayForm bodies)
-  in "(lambda " ++ displayFormals formals ++ " " ++ bs ++ ")"
+      fs = displayFormals formals
+  in "(λ " ++ fs ++ " " ++ bs ++ ")"
 displayForm (A _ (App f args)) =
   case unwords (map displayForm args) of
     [] -> -- no argument application
@@ -231,20 +238,14 @@ displayForm (A _ (App f args)) =
 displayForm (A _ (Define name f)) =
   "(define " ++ name ++ " " ++ displayForm f ++ ")\n"
 
-instance Show Closure where
+instance Show (Closure a) where
   show _ = "<closure>"
 
-data Value
-  = Const Constant
-  | Proc Closure
-  | VList [Value]
-  | Undefined
-  deriving ( Show, Eq )
 
-displayValue :: Value -> String
-displayValue (Const c) = displayConstant c
-displayValue (Proc p) = displayClosure p
-displayValue _ = undefined
+-- displayValue :: Value -> String
+-- displayValue (Const c) = displayConstant c
+-- displayValue (Proc p) = displayClosure p
+-- displayValue _ = undefined
 -- displayValue (VList vs) = intercolate " "
 
 -- instance Eq (Closure a) where
