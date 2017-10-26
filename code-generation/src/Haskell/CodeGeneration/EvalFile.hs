@@ -65,7 +65,7 @@ execLine line =
       case val of
         Left err ->
           return . Just $ EE err
-        Right (Proc _) ->
+        Right (VProc _) ->
           return Nothing
         Right v ->
           return . Just $ Val v

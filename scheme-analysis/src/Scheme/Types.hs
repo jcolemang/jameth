@@ -5,6 +5,8 @@
 module Scheme.Types
   ( displayForm
   , displayProgram
+  , displayConstant
+  , displayClosure
   , getAddress
   , isVar
   , isQuote

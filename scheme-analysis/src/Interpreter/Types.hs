@@ -19,6 +19,15 @@ data Value
   | VUndefined
   deriving ( Show, Eq )
 
+displayValue :: Value -> String
+displayValue (VConst c) =
+  displayConstant c
+displayValue (VProc c) =
+  displayClosure c
+displayValue (VList vals) =
+  let ss = fmap displayValue vals
+  in show vals
+
 data EvalError
   = NonProcedure SourcePos Value
   | UndefinedVariable SourcePos String
