@@ -1,4 +1,5 @@
 
+
 module Scheme.Parse where
 
 import Scheme.Tokenize
@@ -12,8 +13,6 @@ import Control.Monad.Except
 import Control.Monad.Trans.Except
 import Control.Monad.Identity
 import Control.Arrow (second)
-
-import Debug.Trace
 
 
 invalidSyntax :: JLTree -> Maybe String -> SourcePos -> ParseMonad a

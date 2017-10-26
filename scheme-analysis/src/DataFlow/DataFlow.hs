@@ -1,191 +1,89 @@
 
 {-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module DataFlow.DataFlow where
 
 import Scheme.Types
-import Scheme.PrimitiveProcedures
+import DataFlow.Types
+import DataFlow.PrimProcs
 
 import Control.Monad.State
 import Control.Monad.Except
-import Control.Monad.Trans.Except
-import Control.Monad.List
 import Control.Monad.Identity
-import Data.Map
-import Control.Monad.Writer
+
 import Debug.Trace
 
+execAnalysis :: Program -> Either AnalysisError AbstractValue
+execAnalysis prog =
+  let initS = initialState prog
+  in fst $ runIdentity (runStateT (runExceptT (runAnalysis (allPossibleValues prog)))
+                                  initS)
 
--- initialLabel :: Form -> Label
--- initialLabel (A ann Value{}) = label ann
--- initialLabel (A ann Var{}) = label ann
--- initialLabel (A ann Quote{}) = label ann
--- initialLabel (A ann Lambda{}) = label ann
--- initialLabel (A ann Let{}) = label ann
--- initialLabel (A ann TwoIf{}) = label ann
--- initialLabel (A ann OneIf{}) = label ann
--- initialLabel (A ann Define{}) = label ann
--- initialLabel (A ann App{}) = label ann
+allPossibleValues :: Program -> AnalysisMonad AbstractValue
+allPossibleValues (Program forms) =
+  last <$> mapM iteration forms
 
-finalLabel :: Form -> Int
-finalLabel = undefined
-
-newtype AnalysisMonad a
-  = AnalysisMonad
-  { runAnalysis :: ExceptT AnalysisError (StateT AnalysisState Identity) a
-  } deriving ( Functor, Applicative, Monad,
-               MonadState AnalysisState, MonadError AnalysisError )
-
-instance Environment AnalysisMonad (Annotated Annotation RawForm) where
-  getLocalEnv = localEnv <$> get
-  getGlobalEnv = globalEnv <$> get
-  putLocalEnv l = modify $ \s -> s { localEnv = l }
-  putGlobalEnv g = modify $ \s -> s { globalEnv = g }
-
-data AbstClosure
-  = AbstClosure Formals Bodies (LocalEnvironment AbstractValue)
-
-data AbstractValue
-  = AbstList
-  | AbstProc AbstClosure
-  | AbstBool
-  | AbstNum
-  | AbstStr
-  | AbstNYI
-
-
-allPossibleValues :: Program -> AnalysisMonad a
-allPossibleValues prog =
+applyAbstClosure :: AbstractValue
+                 -> [AbstractValue]
+                 -> AnalysisMonad AbstractValue
+applyAbstClosure p vals = do
+  out <- getOutput
   undefined
 
-data AnalysisState
-  = AnalysisState
-  { labelMap :: Map Label Form
-  , localEnv :: LocalEnvironment Form
-  , globalEnv :: GlobalEnvironment Form
-  }
+runApplyAbstClosure :: AbstractValue
+                    -> [AbstractValue]
+                    -> AnalysisMonad AbstractValue
+runApplyAbstClosure (AbstProc (Closure (Formals ids) bs env _)) rands =
+  withNewEnv (zip ids rands) env (last <$> mapM iteration bs)
+runApplyAbstClosure (AbstProc (Primitive name arity)) rands =
+  applyPrimProc name rands
+runApplyAbstClosure (Branch a b) rands = do
+  aVal <- applyAbstClosure a rands
+  bVal <- applyAbstClosure b rands
+  return $ createBranch aVal bVal
+runApplyAbstClosure _ _ =
+  return (AbstErr NotAProcedure)
 
-allPossible :: Form -> AnalysisMonad [AbstractValue]
-allPossible (A _ (Const (SStr _))) =
-  return [ AbstStr ]
-allPossible (A _ (Const (SBool _))) =
-  return [ AbstBool ]
-allPossible (A _ (Const (SInt _))) =
-  return [ AbstNum ]
-allPossible (A _ (Const (SNum _))) =
-  return [ AbstNum ]
-allPossible (A _ (Const _)) =
-  return [ AbstNYI ]
-allPossible (A _ (TwoIf _ true false)) = do
-  trueBranch <- allPossible true
-  falseBranch <- allPossible false
-  return $ trueBranch ++ falseBranch
-allPossiblle (A _ (Lambda fs bods)) = do
-  undefined
-  -- env <- getLocalEnv
-  -- return (AbstProc $ Closure fs env
+iteration :: Form -> AnalysisMonad AbstractValue
+iteration (A ann (Const (SStr _))) =
+  putOutput (label ann) AbstStr
+iteration (A ann (Const (SBool _))) =
+  putOutput (label ann) AbstBool
+iteration (A ann (Const (SInt _))) =
+  putOutput (label ann) AbstNum
+iteration (A ann (Const (SNum _))) =
+  putOutput (label ann) AbstNum
+iteration (A _ (Const _)) =
+  error "Constant not yet implemented"
+iteration (A ann (Var name addr)) = do
+  mVal <- getEnvValue addr
+  case mVal of
+    Just val ->
+      putOutput (label ann) val
+    Nothing ->
+      putOutput (label ann) (AbstErr UnboundVar)
 
-
-
--- runDataFlow :: Form -> [Either AnalysisError Program]
--- runDataFlow f =
---   undefined
-  -- let initGlobal = initialState f
-  --     exec m = fst $ runIdentity (runStateT (runExceptT (runAnalysis m))
-  --                                 initGlobal)
-  -- in fmap exec (evaluate f)
-
--- runAnalysis :: AnalysisMonad a -> Either AnalysisError (s, a)
--- runAnalysis am =
---   runIdentity (runStateT)
-
-initialState :: Form -> AnalysisState
-initialState f =
-  AnalysisState
-  { labelMap = createLabelMap f
-  , localEnv = createEmptyEnv
-  , globalEnv = createEmptyGlobalEnv
-  }
-
-createLabelMap :: Form -> Map Label Form
-createLabelMap f =
-  let labels = snd (runWriter $ getLabels f)
-  in fromList labels
-
-getLabels :: Form -> Writer [(Label, Form)] ()
-getLabels f =
-  let lab = label $ annotation f
-  in case form f of
-    Lambda _ bodies -> do
-      mapM_ getLabels bodies
-      tell [(lab, f)]
-    _ ->
-      tell [(lab, f)]
-
-
-
--- initialGlobal :: GlobalEnvironment Form
--- initialGlobal =
---   createGlobalEnv (fmap (\(s, p) ->
---                            (s, A primitiveAnnotation . Value . JLProc $ p))
---                     primitiveProcedures)
-
--- initialState f =
---   AnalysisState
---   { labelMap = createLabelMap f
---   , localEnv = createEmptyEnv
---   -- , globalEnv =k
---   }
-
-data AnalysisError
-  = BadNumArguments
-  | NotAProcedure
-  | UnboundVar
-  deriving (Show)
-
-
--- I would like the environment to store labels
-
-
--- data CFAVal
---   = Foo
-
--- runCFA :: Form -> Either AnalysisError ([AnalysisState])
-
--- sweep :: Form -> [AnalysisMonad Form]
-
--- evaluate f = do
---   undefined
-  -- let ann = annotation f
-  -- let sp = pos ann
-  -- case form f of
-  --   v@Value {} ->
-  --     return v
-  --   Var _ lexAddr -> do
-  --     let test =
-  --           [ do s <- get
-  --                case getValue lexAddr (localEnv s) (globalEnv s) of
-  --                  Nothing ->
-  --                    AnalysisMonad $ throwE UnboundVar
-  --                  Just val ->
-  --                    return val
-  --           ]
-  --       in traceShowM test >> test
-  --   Quote _ -> undefined
-  --   Lambda fs bs ->
-  --     [ do s <- get
-  --          return . JLProc $ Closure fs bs (localEnv s) sp
-  --     ]
-  --   Define var body -> do
-  --     [ do undefined
-  --       ]
-  --   App p args -> do
-  --     argEvals <- fmap evaluate args
-  --     procEval <- evaluate p
+iteration (A ann (TwoIf _ true false)) = do
+  trueBranch <- iteration true
+  falseBranch <- iteration false
+  putOutput (label ann) (createBranch trueBranch falseBranch)
+iteration (A ann (Lambda fs bs)) = do
+  let sp = pos ann
+  env <- getLocalEnv
+  putOutput (label ann) (AbstProc $ Closure fs bs env sp)
+iteration f@(A _ (App rator rands)) = do
+  ratorVal <- iteration rator
+  randVals <- mapM iteration rands
+  out <- applyAbstClosure ratorVal randVals
+  return out
+  -- case ratorVal of
+  --   AbstProc c ->
+  --   Branch a b ->
   --     undefined
-  --   x -> do
-  --     traceShowM x
-  --     undefined
+  --   _ -> do
+  --     traceShowM $ "Not a procedure: " ++ show f ++ " " ++ show ratorVal
+  --     return . AbstErr $ NotAProcedure
+iteration f =
+  error $ "Not yet implemented: " ++ show f

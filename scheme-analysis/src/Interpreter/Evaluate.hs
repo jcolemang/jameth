@@ -2,9 +2,8 @@
 module Interpreter.Evaluate where
 
 import Scheme.Types
-import Interpreter.Types
 import Interpreter.PrimProcs
-
+import Interpreter.Types
 
 -- | Top Level Definitions
 
@@ -21,7 +20,9 @@ evaluate (Program forms) = do
   vals <- mapM evaluateForm forms
   return $ last vals
 
-
+toBool :: Value -> Bool
+toBool (VConst (SBool b)) = b
+toBool _ = True
 
 -- | Helpers
 
@@ -54,6 +55,11 @@ evaluateForm (A ann f) =
          val <- evaluateForm body
          putInGlobalEnv name val
          return $ VConst SVoid
+       TwoIf test true false -> do
+         direction <- evaluateForm test
+         if toBool direction
+         then evaluateForm true
+         else evaluateForm false
        v ->
          error $ "Not yet implemented: " ++ show v
 

@@ -2,6 +2,7 @@
 import Scheme.Parse
 import Scheme.Types
 import Interpreter.Evaluate
+import DataFlow.DataFlow
 
 import System.Environment
 import Control.Monad
@@ -20,5 +21,10 @@ main = do
       putStrLn $ join (fmap displayForm fs)
       val <- execEval p
       print val
+
+      putStrLn "Abstract analysis:"
+      print $ execAnalysis p
+
+
       -- putStrLn "Result of analysis:"
       -- print $ runDataFlow first

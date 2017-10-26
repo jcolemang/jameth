@@ -5,9 +5,7 @@
 module Scheme.Types
   ( displayForm
   , displayProgram
-  -- , displayValue
   , getAddress
-  -- , isValue
   , isVar
   , isQuote
   , isLambda
@@ -42,7 +40,6 @@ module Scheme.Types
   , Form
   , Formals (..)
   , RawForm (..)
-  -- , Value (..)
   , Program (..)
   , Annotated (..)
   , Annotation (..)
@@ -54,7 +51,6 @@ where
 
 import Data.Map hiding (map, foldl, foldl')
 import Control.Monad
--- import Data.List hiding (insert)
 
 data Constant
   = SStr  String
@@ -125,7 +121,19 @@ annotation (A a _) = a
 form :: Annotated ann f -> f
 form (A _ f) = f
 
+-- data Label
+--   = PrimitiveLabel
+--   | Label Int
+--   deriving ( Show
+--            , Eq
+--            )
 type Label = Int
+
+-- instance Ord Label where
+--   compare PrimitiveLabel PrimitiveLabel = EQ
+--   compare PrimitiveLabel _ = LT
+--   compare _ PrimitiveLabel = GT
+--   compare (Label x) (Label y) = compare x y
 
 data Annotation
   = Ann
@@ -175,16 +183,6 @@ instance Eq (Closure a) where
   (Primitive name _) == (Primitive name' _) = name == name'
   _ == _ = False
 
--- data ExpandedForm
---   = EValue Value
---   | EVar String LexicalAddress
---   | EQuote Value
---   | ELambda
-
--- isValue :: Form -> Bool
--- isValue (A _ Value {}) = True
--- isValue _ = False
-
 isVar :: Form -> Bool
 isVar (A _ Var {}) = True
 isVar _ = False
@@ -217,9 +215,9 @@ isApp :: Form -> Bool
 isApp (A _ App {}) = True
 isApp _ = False
 
--- displayForm :: Form -> String
--- displayForm (A _ (Value val)) =
---   displayValue val
+displayForm :: Form -> String
+displayForm (A _ (Const val)) =
+  displayConstant val
 displayForm (A _ (Var name addr)) =
   -- "(" ++ name ++ ":" ++ show addr ++ ")"
   name
@@ -237,6 +235,11 @@ displayForm (A _ (App f args)) =
       "(" ++ displayForm f ++ " " ++ as ++ ")"
 displayForm (A _ (Define name f)) =
   "(define " ++ name ++ " " ++ displayForm f ++ ")\n"
+
+displayForm (A _ (TwoIf test true false)) =
+  "(if " ++ displayForm test ++ " " ++
+            displayForm true ++ " " ++
+            displayForm false ++ ")"
 
 instance Show (Closure a) where
   show _ = "<closure>"
