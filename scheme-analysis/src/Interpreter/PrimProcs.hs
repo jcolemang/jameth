@@ -45,6 +45,10 @@ sub sp vals =
   case vals of
     [] ->
       wrongNumArgs sp
+    [VConst (SInt x)] ->
+      return (VConst (SInt (-x)))
+    [VConst (SNum x)] ->
+      return (VConst (SNum (-x)))
     (f:rest) ->
       foldM (subTwo sp) f rest
 
