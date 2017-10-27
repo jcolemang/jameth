@@ -35,13 +35,18 @@ add :: SourcePos -> [Value] -> EvalMonad Value
 add sp = foldM (addTwo sp) (VConst $ SInt 0)
 
 subTwo :: SourcePos -> Value -> Value -> EvalMonad Value
-subTwo _ (VConst (SInt y)) (VConst (SInt x)) = returnInt $ x - y
-subTwo _ (VConst (SNum y)) (VConst (SInt x)) = returnNum $ fromInteger x - y
-subTwo _ (VConst (SInt y)) (VConst (SNum x)) = returnNum $ x - fromInteger y
-subTwo _ (VConst (SNum y)) (VConst (SNum x)) = returnNum $ x - y
+subTwo _ (VConst (SInt x)) (VConst (SInt y)) = returnInt $ x - y
+subTwo _ (VConst (SNum x)) (VConst (SInt y)) = returnNum $ x - fromInteger y
+subTwo _ (VConst (SInt x)) (VConst (SNum y)) = returnNum $ fromInteger x - y
+subTwo _ (VConst (SNum x)) (VConst (SNum y)) = returnNum $ x - y
 subTwo sp _ _ = typeError sp
 sub :: SourcePos -> [Value] -> EvalMonad Value
-sub sp = foldM (subTwo sp) (VConst $ SInt 0)
+sub sp vals =
+  case vals of
+    [] ->
+      wrongNumArgs sp
+    (f:rest) ->
+      foldM (subTwo sp) f rest
 
 mulTwo :: SourcePos -> Value -> Value -> EvalMonad Value
 mulTwo _ (VConst (SInt y)) (VConst (SInt x)) = returnInt $ x * y
