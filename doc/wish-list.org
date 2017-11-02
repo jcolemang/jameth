@@ -1,0 +1,55 @@
+
+* Sort of refinement types
+  To debug, you could add assertions to functions. This could include their
+  arguments, or it could include their return values. If the function is ever
+  called yielding a false assertion, an error will be thrown and it will print
+  out some sort of stack trace, as well as the bad input.
+
+  #+BEGIN_SRC scheme
+  (define some-function
+    (lambda (x)
+      (some-function (add1 x))))
+
+  (assert-returns some-function (lambda (x) (< 0 x)))
+  #+END_SRC
+
+* Stack traces
+  Whenever there is an error in the program, it will not only print out a nice
+  error message, but also a stack trace of the execution.
+
+* Watch expressions
+  The ability to add traces to individual expressions. This would print out how
+  the expression was called and would print out the return value of the
+  expression.
+
+  #+BEGIN_SRC scheme
+  (define some-function
+    (lambda (x)
+      (some-function (watch (add1 x)))))
+  #+END_SRC
+
+* A basic debugger
+  This would not be all that difficult once the interpreter was written in
+  continuation passing style. You could keep track of the previous expression
+  evaluated. On error, you would give the user a prompt with that state frozen
+  in time. This might require some monad trickery to keep the state when there
+  are exceptions. Reordering the monad stack would make life difficult
+  throughout the rest of the code.
+
+* Real macros
+  To really implement a useful Scheme interpreter, I need hygenic macros. This
+  would be difficult, but would allow me to load all of the Chez Scheme
+  definitions without writing each of them myself.
+
+* A linter
+  Currently I am stuck between writing an abstract interpreter and more static
+  tools. Somewhere in here, there should really be some kind of linter. It could
+  give suggestions based on the types of expressions (determined statically or
+  dynamically) and could even give code style feedback. The code style feedback
+  would need to be integrated into the parser itself, which would be tricky.
+
+* Automatic detection of bad numbers of procedure arguments
+  This is the big one. I would like to be able to tell the user whether there is
+  the possibility that their code will yield an error based on the number of
+  arguments. Right now this is done with an abstract interpreter, but I would
+  like to try the static approach.
