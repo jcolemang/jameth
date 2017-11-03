@@ -1,0 +1,18 @@
+
+* Useful Reading
+
+** Read, and they are useful
+
+  [[http://www.ccs.neu.edu/home/shivers/papers/pepm91.pdf][The Semantics of Scheme Control-Flow Analysis - Shivers]]
+
+  [[http://www.ccs.neu.edu/home/shivers/papers/trec.pdf][Data-Flow Analysis and Type Recovery in Scheme - Shivers]]
+
+** Haven't read, but they might be useful
+
+   [[http://citeseer.ist.psu.edu/viewdoc/download;jsessionid=A39EACF077782A7FCF966D258DDBD8E6?doi=10.1.1.22.5246&rep=rep1&type=pdf][Is Continuation-Passing Useful for Data Flow Analysis? - Sabry, Felleisen]]
+
+   [[http://cpsc.yale.edu/sites/default/files/files/tr505.pdf][Finding Fixpoints on Function Spaces - Young, Hudak]]
+
+   [[https://pdfs.semanticscholar.org/2595/0c8e97977c2a57443ed9ae6a9602c5c18d26.pdfr][Finding Fixpoints in Finite Function Spaces Using Neededness Analysis and Chaotic Iteration]]
+
+   [[http://okmij.org/ftp/Computation/FLOLAC/lecture.pdf][Interpreting types as abstract values]]
