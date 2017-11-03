@@ -10,7 +10,7 @@ import Test.HUnit
 
 dummy :: Annotation
 dummy =
-  Ann PrimitiveSource (-1)
+  Ann PrimitiveSource (-1) (TreeId "dummy" PrimitiveSource)
 
 testProg :: String -> String -> Value -> Assertion
 testProg s p v =
@@ -22,8 +22,8 @@ testProg s p v =
       case result of
         Left err ->
           assertFailure $ show err
-        Right val ->
-          assertEqual s v val
+        Right vals ->
+          assertEqual s [v] vals
 
 basicApplicationTests :: Test
 basicApplicationTests = TestCase $ do
@@ -59,8 +59,19 @@ lambdaTests = TestCase $ do
   testProg "Bad naming"        prog5 (VConst $ SInt 25)
   testProg "Extra bad naming"  prog6 (VConst $ SInt 16)
 
+letTests :: Test
+letTests = TestCase $ do
+  let prog1 = "(let ((a 1)) a)"
+  let prog2 = "(let ((f add1)) (f 5))"
+  let prog3 = "(let ((f (lambda (x) (* 5 x)))) (f 5))"
+
+  testProg "Basic let" prog1 (VConst $ SInt 1)
+  testProg "Let with procedure" prog2 (VConst $ SInt 6)
+  testProg "Let with lambda" prog3 (VConst $ SInt 25)
+
 tests :: [Test]
 tests =
   [ basicApplicationTests
   , lambdaTests
+  , letTests
   ]

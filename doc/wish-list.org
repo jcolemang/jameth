@@ -53,3 +53,16 @@
   the possibility that their code will yield an error based on the number of
   arguments. Right now this is done with an abstract interpreter, but I would
   like to try the static approach.
+
+* Mutation warnings
+  Doing something like this will make you sad:
+
+  #+BEGIN_SRC scheme
+  (define a 10)
+  (+ a a a (begin (set! a 1) a) a a a)
+  #+END_SRC
+
+  I would like to be able to detect when someone could potentially observe the
+  non deterministic/undefined behavior of a Scheme program and warn them to
+  stop. This would really just end up being the detection of whenever someone
+  uses side effectful code in their argument parameters.

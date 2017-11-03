@@ -26,14 +26,15 @@ displayValue (VProc c) =
   displayClosure c
 displayValue (VList vals) =
   let ss = fmap displayValue vals
-  in show vals
+  in show ss
 
 data EvalError
   = NonProcedure SourcePos Value
   | UndefinedVariable SourcePos String
-  | TypeError SourcePos
+  | TypeError SourcePos Value
   | ArithError SourcePos
   | WrongNumArgs SourcePos
+  | ValueError SourcePos
   deriving ( Show )
 
 data EvalState
@@ -50,6 +51,7 @@ newtype EvalMonad a
              , Monad
              , MonadState EvalState
              , MonadError EvalError
+             , MonadIO
              )
 
 defaultGlobalEnv :: GlobalEnvironment Value
@@ -68,9 +70,9 @@ nonProcedure :: SourcePos -> Value -> EvalMonad a
 nonProcedure sp v =
   throwError $ NonProcedure sp v
 
-typeError :: SourcePos -> EvalMonad a
-typeError sp =
-  throwError $ TypeError sp
+typeError :: SourcePos -> Value -> EvalMonad a
+typeError sp val =
+  throwError $ TypeError sp val
 
 undefinedVariable :: SourcePos -> String -> EvalMonad a
 undefinedVariable sp var =
@@ -83,6 +85,10 @@ wrongNumArgs sp =
 arithmeticError :: SourcePos -> EvalMonad a
 arithmeticError sp =
   throwError $ ArithError sp
+
+valueError :: SourcePos -> EvalMonad a
+valueError sp =
+  throwError $ ValueError sp
 
 instance Environment EvalMonad Value where
   getLocalEnv    = localEnv  <$> get

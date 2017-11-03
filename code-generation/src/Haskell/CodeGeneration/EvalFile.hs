@@ -34,6 +34,7 @@ instance Show ResultLine where
                     , "Nothing"
                     , show err
                     ]
+  show (ResultLine p (Val (VProc _))) = [  ]
   show (ResultLine p (Val v)) =
     intercalate "," [ p
                     , displayValue v
@@ -65,7 +66,9 @@ execLine line =
       case val of
         Left err ->
           return . Just $ EE err
-        Right (VProc _) ->
-          return Nothing
-        Right v ->
-          return . Just $ Val v
+        Right eVals ->
+          case last eVals of
+            (VProc _) ->
+              return Nothing
+            v ->
+              return . Just $ Val v

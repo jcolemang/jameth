@@ -1,31 +1,50 @@
 
-module Scheme.PrimitiveProcedures where
+module Scheme.PrimitiveProcedures
+  ( carsAndCdrs
+  , primitiveProcedures
+  )
+where
 
 import Scheme.Types
 
+import Data.List
+
+carsAndCdrs :: [(String, Closure a)]
+carsAndCdrs =
+  let allNames = subsequences "aaaadddd"
+      valid = filter (not . null) $ filter ((<= 4) . length) allNames
+      withCRs = fmap (\x -> "c" ++ x ++ "r") valid
+  in flip fmap withCRs $ \x -> (x, Primitive x (Exactly 1))
+
 primitiveProcedures :: [(String, Closure a)]
 primitiveProcedures =
-  [ ("+",      Primitive "+" $ AnyNum)
+  [ ("+",      Primitive "+" AnyNum)
   , ("=",      Primitive "=" $ AtLeast 1)
-  , ("*",      Primitive "*" $ AnyNum)
+  , ("*",      Primitive "*" AnyNum)
   , ("-",      Primitive "-" $ AtLeast 1)
   , ("/",      Primitive "/" $ AtLeast 1)
+  , (">",     Primitive ">" $ AtLeast 1)
+  , ("<",     Primitive "<" $ AtLeast 1)
   , (">=",     Primitive ">=" $ AtLeast 1)
+  , ("<=",     Primitive ">=" $ AtLeast 1)
+  , ("<=",     Primitive "<=" $ AtLeast 1)
   , ("sqrt",   Primitive "sqrt" $ Exactly 1)
+  , ("add1",   Primitive "add1" $ Exactly 1)
+  , ("sub1",   Primitive "sub1" $ Exactly 1)
 
   , ("cons",   Primitive "cons" $ Exactly 2)
-  , ("car",    Primitive "car" $ Exactly 1)
-  , ("cdr",    Primitive "cdr" $ Exactly 1)
-  , ("caar",   Primitive "caar" $ Exactly 1)
-  , ("cadr",   Primitive "cadr" $ Exactly 1)
-  , ("cdar",   Primitive "cdar" $ Exactly 1)
-  , ("cddr",   Primitive "cddr" $ Exactly 1)
   , ("length", Primitive "length" $ Exactly 1)
-  , ("list",   Primitive "list" $ AnyNum)
-  , ("append", Primitive "append" $ AnyNum)
+  , ("list",   Primitive "list" AnyNum)
+  , ("append", Primitive "append" AnyNum)
 
   , ("equal?", Primitive "equal?" $ Exactly 2)
   , ("zero?",  Primitive "zero?" $ Exactly 1)
+  , ("not",    Primitive "not" $ Exactly 1)
+  , ("or",     Primitive "or" AnyNum)
+  , ("and",    Primitive "and" AnyNum)
 
   , ("andmap", Primitive "andmap" $ AtLeast 2)
-  ]
+
+  , ("display", Primitive "display" $ Exactly 1)
+  , ("newline", Primitive "newline" $ Exactly 0)
+  ] ++ carsAndCdrs

@@ -9,7 +9,7 @@ import Test.HUnit
 
 parseLambdas :: Test
 parseLambdas = TestCase $ do
-  let r1 = runParseNoInit "((lambda (y) (lambda (y) 2)) (- 2 0))"
+  let r1 = runParse "((lambda (y) (lambda (y) 2)) (- 2 0))"
   case r1 of
     Left err ->
       assertFailure $ "Did not parse: " ++ show err

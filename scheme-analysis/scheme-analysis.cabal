@@ -20,9 +20,13 @@ library
   exposed-modules:     Analysis.Analysis
                      , Analysis.AnalysisTypes
                      , Analysis.Analyzers.AppendAnalysis
-                     , DataFlow.DataFlow
-                     , DataFlow.Types
-                     , DataFlow.PrimProcs
+                     , Analysis.AbstractInterpreter.Interpreter
+                     , Analysis.AbstractInterpreter.Types
+                     , Analysis.AbstractInterpreter.PrimProcs
+                     , Analysis.StaticAnalysis.Analysis
+                     , Scheme.Forms
+                     , Scheme.Environments
+                     , Scheme.Display
                      , Scheme.Parse
                      , Scheme.Types
                      , Scheme.ParseTypes
@@ -41,6 +45,7 @@ library
                      , mtl
                      , path
                      , path-io
+                     , safe
   default-language:    Haskell2010
 
 test-suite scheme-analysis-test

@@ -13,13 +13,13 @@ isRawApp _ = False
 
 parseBasicApplication :: Test
 parseBasicApplication = TestCase $ do
-  let r1 = getApp =<< getFirstForm (runParseNoInit "(+)")
+  let r1 = getApp =<< getFirstForm (runParse "(+)")
   assertBool "Result is application" $ maybe False isRawApp r1
 
-  let r2 = getFirstFormA (runParseNoInit "(lambda (x) x)")
+  let r2 = getFirstFormA (runParse "(lambda (x) x)")
   assertBool "Result is lambda" $ maybe False isLambda r2
 
-  -- let r3 = getFirstForm (runParseNoInit "(lambda (lambda) lambda)")
+  -- let r3 = getFirstForm (runParse "(lambda (lambda) lambda)")
   -- case r3 of
   --   Just (Lambda _ [body]) ->
   --     assertBool "Body is a variable" $ isVar body
@@ -31,7 +31,7 @@ parseBasicApplication = TestCase $ do
   --   _ ->
   --     assertFailure "Lambda shadowing error"
 
-  let r4 = getSecondForm (runParseNoInit ("(lambda (lambda) lambda)" ++
+  let r4 = getSecondForm (runParse ("(lambda (lambda) lambda)" ++
                                           "(lambda (lambda) lambda)"))
   case r4 of
     Just (Lambda _ [body]) ->

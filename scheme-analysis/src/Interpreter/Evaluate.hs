@@ -5,20 +5,21 @@ import Scheme.Types
 import Interpreter.PrimProcs
 import Interpreter.Types
 
+import Debug.Trace
+
 -- | Top Level Definitions
 
-execEval :: Program -> IO (Either EvalError Value)
+execEval :: Program -> IO (Either EvalError [Value])
 execEval =
   execEvalEnv defaultGlobalEnv
 
-execEvalEnv :: GlobalEnvironment Value -> Program -> IO (Either EvalError Value)
+execEvalEnv :: GlobalEnvironment Value -> Program -> IO (Either EvalError [Value])
 execEvalEnv env prog =
   runEval env (evaluate prog)
 
-evaluate :: Program -> EvalMonad Value
-evaluate (Program forms) = do
-  vals <- mapM evaluateForm forms
-  return $ last vals
+evaluate :: Program -> EvalMonad [Value]
+evaluate (Program forms) =
+  mapM evaluateForm forms
 
 toBool :: Value -> Bool
 toBool (VConst (SBool b)) = b
@@ -33,12 +34,22 @@ evaluateForm (A ann f) =
        Const v ->
          return $ VConst v
        Var s addr -> do
-         envVal <- getEnvValue addr
+         envVal <- getEnvValueM addr
          case envVal of
            Nothing ->
              undefinedVariable sp s
            Just val ->
              return val
+       Quote slist ->
+         let slistToVals sl =
+               case sl of
+                 SList vals ->
+                   VList (fmap slistToVals vals)
+                 Constant c ->
+                   VConst c
+                 Symbol s ->
+                   VConst (SSymbol s)
+         in return $ slistToVals slist
        Lambda formals bodies -> do
          l <- getLocalEnv
          return . VProc $ Closure formals bodies l sp
@@ -58,10 +69,12 @@ evaluateForm (A ann f) =
        TwoIf test true false -> do
          direction <- evaluateForm test
          if toBool direction
-         then evaluateForm true
-         else evaluateForm false
-       v ->
-         error $ "Not yet implemented: " ++ show v
+           then evaluateForm true
+           else evaluateForm false
+       Set name addr bodyFrm -> do
+         val <- evaluateForm bodyFrm
+         putInEnv name val addr
+         return $ VConst SVoid
 
 applyClosure :: SourcePos -> Closure Value -> [Value] -> EvalMonad Value
 applyClosure sp closure rands =

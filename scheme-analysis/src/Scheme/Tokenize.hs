@@ -9,11 +9,11 @@ import Text.ParserCombinators.Parsec hiding (ParseError)
 import Data.List
 import Control.Monad
 
-tokenize :: String -> Either ParseError [JLTree]
+tokenize :: String -> Either ParseError [Tree]
 tokenize =
   tokenize' . removeAllComments
 
-tokenize' :: String -> Either ParseError [JLTree]
+tokenize' :: String -> Either ParseError [Tree]
 tokenize' s =
   case parse (whitespaces *> many parseTree <* whitespaces <* eof) "jameth" s of
     Left p ->
@@ -49,12 +49,12 @@ parens p =
   <|> between (char '[') (char ']') p
 
 
-parseTree :: Parser JLTree
+parseTree :: Parser Tree
 parseTree =
   sp parseList
   <|> sp (do p <- getPosition
              con <- parseConstant
-             return $ JLVal con (SP (sourceLine p) (sourceColumn p)))
+             return $ TreeVal con (SP (sourceLine p) (sourceColumn p)))
   <|> sp parseIdentifier
   <|> sp parseQuote
 
@@ -69,34 +69,34 @@ parseIdSubsequent :: Parser Char
 parseIdSubsequent =
   parseIdInitial <|> digit <|> char '.' <|> char '-' <|> char '+'
 
-parseSpecialIdentifier :: Parser JLTree
+parseSpecialIdentifier :: Parser Tree
 parseSpecialIdentifier = do
   pos <- getPosition
   iden <- string "..." <|> string "+" <|> string "-"
-  return $ JLId iden (SP (sourceLine pos) (sourceColumn pos))
+  return $ TreeId iden (SP (sourceLine pos) (sourceColumn pos))
 
-parseIdentifierStd :: Parser JLTree
+parseIdentifierStd :: Parser Tree
 parseIdentifierStd = do
   pos <- getPosition
   initial <- parseIdInitial
   rest <- many parseIdSubsequent
-  return (JLId (initial:rest) (SP (sourceLine pos) (sourceColumn pos)))
+  return (TreeId (initial:rest) (SP (sourceLine pos) (sourceColumn pos)))
 
-parseIdentifier :: Parser JLTree
+parseIdentifier :: Parser Tree
 parseIdentifier = try parseSpecialIdentifier <|> parseIdentifierStd
 
-parseList :: Parser JLTree
+parseList :: Parser Tree
 parseList = do
   p <- getPosition
   pts <- parens (many parseTree)
-  return $ JLSList pts (SP (sourceLine p) (sourceColumn p))
+  return $ TreeSList pts (SP (sourceLine p) (sourceColumn p))
 
-parseQuote :: Parser JLTree
+parseQuote :: Parser Tree
 parseQuote = do
   p <- getPosition
   t <- string "'" >> parseTree
   let pos = SP (sourceLine p) (sourceColumn p)
-  return $ JLSList [JLId "quote" pos, t] pos
+  return $ TreeSList [TreeId "quote" pos, t] pos
 
 parseConstant :: Parser Constant
 parseConstant

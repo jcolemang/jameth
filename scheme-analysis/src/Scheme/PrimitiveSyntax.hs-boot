@@ -3,4 +3,4 @@ where
 
 import Scheme.ParseTypes
 
-primitiveSyntax :: [(String, JLSyntax)]
+primitiveSyntax :: [(String, Syntax)]

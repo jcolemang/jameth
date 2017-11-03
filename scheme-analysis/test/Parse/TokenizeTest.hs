@@ -7,18 +7,18 @@ import Scheme.Types
 
 import Test.HUnit
 
-newtype MostlyTree = M JLTree
+newtype MostlyTree = M Tree
   deriving ( Show )
 
 instance Eq MostlyTree where
   (M t1) == (M t2) = mostlyEqual t1 t2
 
-mostlyEqual :: JLTree -> JLTree -> Bool
-mostlyEqual (JLVal c _) (JLVal c' _) =
+mostlyEqual :: Tree -> Tree -> Bool
+mostlyEqual (TreeVal c _) (TreeVal c' _) =
   c == c'
-mostlyEqual (JLId x _) (JLId x' _) =
+mostlyEqual (TreeId x _) (TreeId x' _) =
   x == x'
-mostlyEqual (JLSList ls _) (JLSList ls' _) =
+mostlyEqual (TreeSList ls _) (TreeSList ls' _) =
   and $ fmap (uncurry mostlyEqual) (zip ls ls')
 mostlyEqual _ _ =
   False
@@ -32,12 +32,12 @@ tokenizeTest :: Test
 tokenizeTest = TestCase $ do
   let r1 = tokenize "x"
   assertEqual "Basic ID"
-              (fmap M <$> Right [JLId "x" dsp])
+              (fmap M <$> Right [TreeId "x" dsp])
               (fmap M <$> r1)
 
   let r2 = tokenize "(x)"
   assertEqual "Basic ID"
-              (fmap M <$> Right [JLSList [JLId "x" dsp] dsp])
+              (fmap M <$> Right [TreeSList [TreeId "x" dsp] dsp])
               (fmap M <$> r2)
 
 tests :: [Test]

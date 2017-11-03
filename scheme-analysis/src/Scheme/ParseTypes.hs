@@ -7,10 +7,11 @@ module Scheme.ParseTypes
   ( modify', modify
   , getLabel
   , initialState
+  , expandedAnn
   , BoundValue (..)
-  , JLTree (..)
+  , Tree (..)
   , ParseState ( ParseState, localEnv, globalEnv )
-  , JLSyntax (..)
+  , Syntax (..)
   , ParseError (..)
   , ParseMonad (..)
   )
@@ -24,15 +25,9 @@ import Control.Monad.Identity
 
 -- | Lexing sort of things
 
-data JLTree
-  = JLVal Constant SourcePos
-  | JLId String SourcePos
-  | JLSList [JLTree] SourcePos
-  deriving (Show)
-
 data BoundValue
   = BVal
-  | BSyntax JLSyntax
+  | BSyntax Syntax
   | EmptySlot
   deriving ( Show )
 
@@ -40,19 +35,21 @@ newtype ParseMonad a
   = ParseMonad
   { runParser :: ExceptT ParseError (StateT ParseState Identity) a
   } deriving ( Functor, Applicative, Monad,
-               MonadState ParseState, MonadError ParseError )
+               MonadState ParseState, MonadError ParseError
+             )
 
 data ParseState
   = ParseState
-  { localEnv :: LocalEnvironment BoundValue
+  { localEnv  :: LocalEnvironment BoundValue
   , globalEnv :: GlobalEnvironment BoundValue
-  , labelNum :: Int
-  } deriving (Show)
+  , labelNum  :: Int
+  }
+  -- deriving (Show)
 
 instance Environment ParseMonad BoundValue where
-  getLocalEnv = localEnv <$> get
-  getGlobalEnv = globalEnv <$> get
-  putLocalEnv l = modify $ \s -> s { localEnv = l }
+  getLocalEnv    = localEnv <$> get
+  getGlobalEnv   = globalEnv <$> get
+  putLocalEnv l  = modify $ \s -> s { localEnv  = l }
   putGlobalEnv g = modify $ \s -> s { globalEnv = g }
 
 initialState :: GlobalEnvironment BoundValue -> ParseState
@@ -69,6 +66,11 @@ getLabel = do
   modify $ \s -> s { labelNum = l + 1 }
   return l
 
+expandedAnn :: Tree -> ParseMonad Annotation
+expandedAnn t = do
+  l <- getLabel
+  return $ Ann ExpandedSource l t
+
 data ParseError
   = ParseError SourcePos
   | InvalidSyntax String SourcePos
@@ -76,8 +78,8 @@ data ParseError
 
 -- | Formal Syntax
 
-data JLSyntax
-  = BuiltIn String (JLTree -> ParseMonad Form)
+data Syntax
+  = BuiltIn String (Tree -> ParseMonad Form)
 
-instance Show JLSyntax where
+instance Show Syntax where
   show (BuiltIn n _) = "#< " ++ n ++ " >"
