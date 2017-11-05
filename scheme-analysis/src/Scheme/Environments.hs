@@ -59,12 +59,6 @@ class (Monad m) => Environment m a | m -> a where
   putLocalEnv  :: LocalEnvironment a -> m ()
   putGlobalEnv :: GlobalEnvironment a -> m ()
 
-refify :: (MonadIO m) => [(a, b)] -> m [(a, IORef b)]
-refify m =
-  liftIO $ mapM (\(a, b) -> do
-                    bRef <- newIORef b
-                    return (a, bRef)) m
-
 putInEnv :: (Environment m a)
          => String
          -> a

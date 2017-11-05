@@ -33,13 +33,15 @@ data Tree
   = TreeVal Constant SourcePos
   | TreeId String SourcePos
   | TreeSList [Tree] SourcePos
-  deriving (Show)
+  deriving ( Show )
 
 data SourcePos
   = SP Int Int
   | PrimitiveSource
   | ExpandedSource
-  deriving (Show, Eq)
+  deriving ( Show
+           , Eq
+           )
 
 data Constant
   = SStr  String
@@ -48,11 +50,13 @@ data Constant
   | SNum  Double
   | SSymbol String
   | SVoid
-  deriving (Show, Eq)
+  deriving ( Show
+           , Eq
+           )
 
 newtype Program
   = Program [Form]
-  deriving (Show)
+  deriving ( Show )
 
 type Label = Int
 
@@ -61,7 +65,7 @@ data Annotation
   { pos :: SourcePos
   , label :: Label
   , source :: Tree
-  } deriving (Show)
+  } deriving ( Show )
 
 type Form
   = Annotated Annotation RawForm

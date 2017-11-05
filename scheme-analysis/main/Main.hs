@@ -8,6 +8,7 @@ import Analysis.StaticAnalysis.Analysis as SA
 import System.Environment
 import Control.Monad
 import Data.List
+import Text.Groom
 
 getText :: [String] -> IO String
 getText ["--file", f] = readFile f
@@ -33,8 +34,10 @@ main = do
       putStrLn "Abstract analysis:"
       print $ AI.execAnalysis p
 
-      putStrLn "Graph thing"
-      print $ SA.execAnalysis (constructFlowGraph p)
+      putStrLn "Analysis"
+      let (s, state) = SA.execAnalysisStr p
+      putStrLn s
+      putStrLn $ groom state
 
       -- putStrLn "Result of analysis:"
       -- print $ runDataFlow first

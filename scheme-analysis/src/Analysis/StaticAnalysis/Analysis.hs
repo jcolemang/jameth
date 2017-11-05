@@ -1,140 +1,147 @@
 
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE RankNTypes #-}
 
 module Analysis.StaticAnalysis.Analysis where
 
-import Scheme.Forms hiding ( form )
+import Scheme.Types hiding ( form
+                           , Formals
+                           )
+import Analysis.StaticAnalysis.Types
 
 import Prelude hiding ( lookup )
-import Safe
-import Data.Map
-import Control.Monad.State
-import Control.Monad.Identity
+-- import Safe
+import Data.Set as S
+import Data.List as L
+import Control.Monad
 
-data FormState
-  = FormState
-  { incoming :: [Label]
-  , outgoing :: [Label]
-  , outputs :: [Form]
-  , inputs :: [Form]
-  , form :: Form
-  } deriving ( Show )
+import Debug.Trace
 
-data FlowGraph
-  = FlowGraph
-  { labels :: [Label]
-  , forms :: Map Label FormState
-  } deriving ( Show )
+runConstant :: Constant -> Label -> AnalysisMonad Quant
+runConstant (SInt _) lab = do
+  q <- newQuant lab
+  addTypeToQuant Numeric q
+  return q
+runConstant (SStr _) lab = do
+  q <- newQuant lab
+  addTypeToQuant Str q
+  return q
+runConstant SVoid lab = do
+  q <- newQuant lab
+  addTypeToQuant Void q
+  return q
+runConstant _ _ = undefined
 
-newtype AnalysisMonad a
-  = AnalysisMonad
-  { staticAnalysis :: StateT FlowGraph Identity a
-  } deriving ( Functor
-             , Applicative
-             , Monad
-             , MonadState FlowGraph )
+bindFormals :: Formals -> [Set Quant] -> AnalysisMonad ()
+bindFormals (Formals qs) args =
+  when (length qs == length args) $
+       forM_ (zip args qs) (uncurry (flip addQuantsToContour))
+bindFormals _ _ = undefined
 
-execAnalysis :: AnalysisMonad a -> FlowGraph
-execAnalysis am =
-  snd $ runIdentity (runStateT (staticAnalysis am) (FlowGraph [] (fromList [])))
+applyProc :: Label -> Type -> [Set Quant] -> AnalysisMonad (Set Quant)
+applyProc _ (StaticProc lab formals) ratorQs = do
+  bindFormals formals ratorQs
+  getQuantsLabel lab
+applyProc appLab _ _ = do
+  q <- newQuant appLab
+  addTypeToQuant (Error NotAProcedure) q
+  return $ S.singleton q
 
-putFormState :: Label -> FormState -> AnalysisMonad ()
-putFormState lab f =
-  modify $ \fg@FlowGraph { labels = l
-                         , forms = frms
-                         } ->
-             fg { labels = lab:l
-                , forms = insert lab f frms
-                }
+applyProcQ :: Label -> Quant -> [Set Quant] -> AnalysisMonad (Set Quant)
+applyProcQ lab ratorQ randsQs = do
+  qTypes <- getQuantTypes ratorQ
+  S.unions <$> mapM (flip (applyProc lab) randsQs) (S.toList qTypes)
 
-putEmptyFormState :: Label -> Form -> AnalysisMonad ()
-putEmptyFormState lab frm =
-  modify $ \fg@FlowGraph { labels = l
-                         , forms = frms
-                         } ->
-             let f = FormState { incoming = []
-                               , outgoing = []
-                               , outputs = []
-                               , inputs = []
-                               , form = frm
-                               }
-             in
-               fg { labels = lab:l
-                  , forms = insert lab f frms
-                  }
+applyProcSet :: Label -> Set Quant -> [Set Quant] -> AnalysisMonad (Set Quant)
+applyProcSet lab ratorQs randsQs = do
+  results <- mapM (flip (applyProcQ lab) randsQs) (S.toList ratorQs)
+  return $ S.unions results
 
-addLink :: (Label, Form) -> (Label, Form) -> AnalysisMonad ()
-addLink f@(from, fromForm) t@(to, toForm) = do
-  s <- get
-  case lookup from (forms s) of
-    Nothing ->
-      putEmptyFormState from fromForm >> addLink f t
-    Just fromFState@FormState { outgoing = fromOG } -> do
-      modify $ \fg@FlowGraph { forms = fs } ->
-                 fg { forms = insert from
-                                     (fromFState { outgoing = to:fromOG })
-                                     fs
-                    }
-      case lookup to (forms s) of
+runForm :: Form -> AnalysisMonad (Set Quant)
+runForm (A ann f) =
+  let lab = label ann
+  in
+    case f of
+      Const c -> do
+        q <- runConstant c (label ann)
+        return $ S.singleton q
+      Var _ addr -> do
+        mval <- getEnvValueM addr
+        case mval of
+          Nothing -> do
+            q <- newQuant lab
+            addQuantsToAnn ann (S.singleton q)
+            return $ S.singleton q
+          Just cont ->
+            getQuantsFromContour cont
+      Define name body -> do
+        assignTo <- newContour
+        putInGlobalEnv name assignTo
+        bodyQuants <- runForm body
+        addQuantsToContour assignTo bodyQuants
+        return S.empty
+      App ratorF randsF -> do
+        ratorQs <- runForm ratorF
+        randsQs <- mapM runForm randsF
+        qs <- applyProcSet lab ratorQs randsQs
+        addQuantsToLabel lab qs
+        return qs
+
+runProgram :: Program -> AnalysisMonad ()
+runProgram (Program fs) =
+  mapM_ runForm fs
+
+runProgramStr :: Program -> AnalysisMonad String
+runProgramStr p = do
+  runProgram p
+  displayTypes p
+
+execAnalysis :: Program -> AnalysisState
+execAnalysis p =
+  runAnalysisState p (runProgram p)
+
+execAnalysisStr :: Program -> (String, AnalysisState)
+execAnalysisStr p =
+  runAnalysis p (runProgramStr p)
+
+displayTypes :: Program -> AnalysisMonad String
+displayTypes (Program frms) = do
+  ss <- mapM displayTypesF frms
+  return $ unwords ss
+
+displayTypesConst :: Constant -> AnalysisMonad String
+displayTypesConst (SInt _) = return $ "{ " ++ show Numeric ++ " }"
+displayTypesConst (SNum _) = return $ "{ " ++ show Numeric ++ " }"
+displayTypesConst (SStr _) = return $ "{ " ++ show Str     ++ " }"
+
+displayVar :: Set Quant -> String -> AnalysisMonad String
+displayVar qs name = do
+  types <- S.unions <$> mapM getQuantTypes (S.toList qs)
+  let typesStr = "{ " ++ L.intercalate ", " (fmap show (S.toList types)) ++ " }"
+  return $ "[ " ++ name ++ " :: " ++ typesStr ++ " ]"
+
+displayTypesF :: Form -> AnalysisMonad String
+displayTypesF (A ann frm) =
+  case frm of
+    Const c ->
+      displayTypesConst c
+    Define name body -> do
+      bodyTypes <- displayTypesF body
+      return $ "(define " ++ name ++ " " ++ bodyTypes ++ ")"
+    Var name addr -> do
+      mcont <- getEnvValueM addr
+      case mcont of
         Nothing ->
-          putEmptyFormState to toForm >> addLink f t
-        Just toFState@FormState { incoming = toOC } ->
-          modify $ \fg@FlowGraph { forms = fs } ->
-                    fg { forms = insert to
-                                        (toFState { incoming = from:toOC })
-                                        fs
-                        }
+          displayVar S.empty name
+        Just cont -> do
+          qs <- getQuantsFromContour cont
+          displayVar qs name
+    App rator rands -> do
+      ratorS <- displayTypesF rator
+      randsS <- mapM displayTypesF rands
+      return $ "(" ++ unwords (ratorS:randsS) ++ ")"
 
-constructFlowGraph :: Program -> AnalysisMonad ()
-constructFlowGraph (Program fs) = mapM_ getFormStates fs
 
 getPairs :: [a] -> [(a, a)]
 getPairs [] = []
 getPairs [_] = []
 getPairs (a:b:rest) = (a, b) : getPairs rest
-
--- returns the first thing which will be evaluated
-getFormStates :: Form -> AnalysisMonad (Label, Form)
-getFormStates frm@(A ann f) =
-  let lab = label ann
-      me = (lab, frm)
-  in
-    case f of
-      Lambda _ fs -> do
-        putEmptyFormState lab frm
-        bodies <- mapM getFormStates fs
-        mapM_ (uncurry addLink) (getPairs bodies)
-        return me
-      TwoIf test true false -> do
-        putEmptyFormState lab frm
-        testLink <- getFormStates test
-        trueLink <- getFormStates true
-        falseLink <- getFormStates false
-        addLink testLink trueLink -- the if is never really evaluated
-        addLink testLink falseLink
-        return testLink
-      Define _ body -> do
-        putEmptyFormState lab frm
-        b <- getFormStates body
-        addLink me b
-        return me
-      App rator rands -> do
-        putEmptyFormState lab frm
-        ratLab <- getFormStates rator
-        randLabs <- mapM getFormStates rands
-        addLink me ratLab
-        mapM_ (uncurry addLink) (getPairs (ratLab:randLabs))
-        case lastMay randLabs of
-          Nothing ->
-            addLink ratLab me
-          Just v ->
-            addLink v me
-        return ratLab
-      Set _ _ body -> do
-        putEmptyFormState lab frm
-        b <- getFormStates body
-        addLink b me
-        return b
-      _ -> do
-        putEmptyFormState lab frm
-        return (lab, frm)

@@ -40,7 +40,7 @@ applyAbstClosure lab sp p vals = do
         Closure (Formals ids) bodies env _ -> do
           numVs <- numVisits lab
           if numVs > 100
-            then return Unknown
+            then return Top
             else visit lab >>
                  withNewEnv (zip ids vals)
                             env

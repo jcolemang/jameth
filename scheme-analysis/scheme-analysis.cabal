@@ -12,6 +12,7 @@ executable scheme-analysis
   ghc-options:         -Wall
   build-depends:       base >= 4.7 && < 5
                      , scheme-analysis
+                     , groom
   other-modules:
   default-language:    Haskell2010
 
@@ -24,6 +25,8 @@ library
                      , Analysis.AbstractInterpreter.Types
                      , Analysis.AbstractInterpreter.PrimProcs
                      , Analysis.StaticAnalysis.Analysis
+                     , Analysis.StaticAnalysis.PrimProcs
+                     , Analysis.StaticAnalysis.Types
                      , Scheme.Forms
                      , Scheme.Environments
                      , Scheme.Display
@@ -47,6 +50,7 @@ library
                      , path-io
                      , safe
   default-language:    Haskell2010
+  default-extensions:  Strict
 
 test-suite scheme-analysis-test
   type:                exitcode-stdio-1.0
