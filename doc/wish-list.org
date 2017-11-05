@@ -66,3 +66,10 @@
   non deterministic/undefined behavior of a Scheme program and warn them to
   stop. This would really just end up being the detection of whenever someone
   uses side effectful code in their argument parameters.
+
+* Web UI
+  Definitely *not* a web Scheme editor. What I would ideally like is just a way
+  to upload a file. This file would then be sent to the server, and it would
+  either be sent through an analysis or it would be sent through an interpreter.
+  On response, the UI would display the file with highlighted warnings and
+  errors.
