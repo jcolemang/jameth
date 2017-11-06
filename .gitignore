@@ -1,5 +1,7 @@
 .stack-work/
 auto/
+resources/
+doc/
 
 \.#*
 
