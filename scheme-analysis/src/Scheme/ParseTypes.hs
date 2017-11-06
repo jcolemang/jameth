@@ -79,7 +79,7 @@ data ParseError
 -- | Formal Syntax
 
 data Syntax
-  = BuiltIn String (Tree -> ParseMonad Form)
+  = BuiltIn String (Tree -> ParseMonad (Form Annotation))
 
 instance Show Syntax where
   show (BuiltIn n _) = "#< " ++ n ++ " >"

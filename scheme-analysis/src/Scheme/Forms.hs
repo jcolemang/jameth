@@ -8,7 +8,6 @@ module Scheme.Forms
   , isApp
 
   , Closure (..)
-  , Bodies
   , Arity (..)
   , Constant (..)
   , SourcePos (..)
@@ -54,8 +53,8 @@ data Constant
            , Eq
            )
 
-newtype Program
-  = Program [Form]
+newtype Program ann
+  = Program [Form ann]
   deriving ( Show )
 
 type Label = Int
@@ -67,10 +66,8 @@ data Annotation
   , source :: Tree
   } deriving ( Show )
 
-type Form
-  = Annotated Annotation RawForm
-
-type Bodies = [Form]
+type Form a
+  = Annotated a (RawForm a)
 
 data SList
   = Symbol String
@@ -78,26 +75,26 @@ data SList
   | SList [SList]
   deriving ( Show )
 
-data RawForm
+data RawForm a
   = Const Constant
   | Var String LexicalAddress
   | Quote SList
-  | Lambda Formals Bodies
-  | TwoIf Form Form Form
-  | Define String Form
-  | App Form [Form]
-  | Set String LexicalAddress Form
+  | Lambda Formals [Form a]
+  | TwoIf (Form a) (Form a) (Form a)
+  | Define String (Form a)
+  | App (Form a) [Form a]
+  | Set String LexicalAddress (Form a)
   deriving ( Show )
 
-isVar :: Form -> Bool
+isVar :: Form a -> Bool
 isVar (A _ (Var _ _)) = True
 isVar _ = False
 
-isLambda :: Form -> Bool
+isLambda :: Form a -> Bool
 isLambda (A _ (Lambda _ _)) = True
 isLambda _ = False
 
-isApp :: Form -> Bool
+isApp :: Form a -> Bool
 isApp (A _ (App _ _)) = True
 isApp _ = False
 
@@ -105,7 +102,7 @@ data Annotated ann f
   = A ann f
   deriving (Show)
 
-instance Monoid Program where
+instance Monoid (Program a) where
   mempty = Program []
   mappend (Program fs) (Program fs') =
     Program (fs ++ fs')
@@ -122,16 +119,16 @@ data Arity
   | AtLeast Int
   | Cases [Arity]
 
-data Closure a
-  = Closure Formals Bodies (LocalEnvironment a) SourcePos
+data Closure ann a
+  = Closure Formals [Form ann] (LocalEnvironment a) SourcePos
   | Primitive String Arity
 
-instance Eq (Closure a) where
+instance Eq (Closure ann a) where
   (Closure _ _ _ sp) == (Closure _ _ _ sp') = sp == sp'
   (Primitive name _) == (Primitive name' _) = name == name'
   _ == _ = False
 
-instance Show (Closure a) where
+instance Show (Closure ann a) where
   show _ = "<closure>"
 
 annotation :: Annotated ann f -> ann

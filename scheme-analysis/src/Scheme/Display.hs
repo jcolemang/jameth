@@ -12,11 +12,11 @@ import Scheme.Forms
 
 import Control.Monad
 
-displayProgram :: Program -> String
+displayProgram :: Program a -> String
 displayProgram (Program fs) =
   join $ displayForm <$> fs
 
-displayForm :: Form -> String
+displayForm :: Form a -> String
 displayForm (A _ (Const val)) =
   displayConstant val
 displayForm (A _ (Var name addr)) =
@@ -48,7 +48,7 @@ displayFormals (SymbolFormal x) =
 displayFormals (Formals fs) =
   "(" ++ unwords fs ++ ")"
 
-displayClosure :: Closure a -> String
+displayClosure :: Closure ann a -> String
 displayClosure Closure {} = "<closure>"
 displayClosure Primitive {} = "<primitive>"
 

@@ -9,15 +9,17 @@ import Debug.Trace
 
 -- | Top Level Definitions
 
-execEval :: Program -> IO (Either EvalError [Value])
+execEval :: Program Annotation -> IO (Either EvalError [Value])
 execEval =
   execEvalEnv defaultGlobalEnv
 
-execEvalEnv :: GlobalEnvironment Value -> Program -> IO (Either EvalError [Value])
+execEvalEnv :: GlobalEnvironment Value
+            -> Program Annotation
+            -> IO (Either EvalError [Value])
 execEvalEnv env prog =
   runEval env (evaluate prog)
 
-evaluate :: Program -> EvalMonad [Value]
+evaluate :: Program Annotation -> EvalMonad [Value]
 evaluate (Program forms) =
   mapM evaluateForm forms
 
@@ -27,7 +29,7 @@ toBool _ = True
 
 -- | Helpers
 
-evaluateForm :: Form -> EvalMonad Value
+evaluateForm :: Form Annotation -> EvalMonad Value
 evaluateForm (A ann f) =
   let sp = pos ann
   in case f of
@@ -76,7 +78,10 @@ evaluateForm (A ann f) =
          putInEnv name val addr
          return $ VConst SVoid
 
-applyClosure :: SourcePos -> Closure Value -> [Value] -> EvalMonad Value
+applyClosure :: SourcePos
+             -> Closure Annotation Value
+             -> [Value]
+             -> EvalMonad Value
 applyClosure sp closure rands =
   case closure of
     Closure (Formals ids) bodies env _ ->

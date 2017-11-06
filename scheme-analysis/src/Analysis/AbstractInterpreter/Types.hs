@@ -37,7 +37,7 @@ data AnalysisState
   { inMap     :: Map Label [AbstractValue]
   , outMap    :: Map Label [([AbstractValue], AbstractValue)]
   , visits    :: Map Label Int
-  , labelMap  :: Map Label Form
+  , labelMap  :: Map Label (Form Annotation)
   , localEnv  :: LocalEnvironment AbstractValue
   , globalEnv :: GlobalEnvironment AbstractValue
   , modified  :: Bool
@@ -54,7 +54,7 @@ data RuntimeError
            , Eq
            )
 
-type AbstClosure = Closure AbstractValue
+type AbstClosure = Closure Annotation AbstractValue
 
 data AbstractValue
   = AbstList [AbstractValue]
@@ -113,12 +113,12 @@ numVisits lab = do
     Just v ->
       return v
 
-createLabelMap :: Program -> Map Label Form
+createLabelMap :: Program Annotation -> Map Label (Form Annotation)
 createLabelMap (Program fs) =
   let labels = snd (runWriter $ mapM getLabels fs)
   in fromList labels
 
-getLabels :: Form -> Writer [(Label, Form)] ()
+getLabels :: Form Annotation -> Writer [(Label, Form Annotation)] ()
 getLabels f =
   let lab = label $ annotation f
   in case form f of
@@ -139,7 +139,7 @@ getLabels f =
     _ -> -- forms which have no inner labels
       tell [(lab, f)]
 
-initialState :: Program -> AnalysisState
+initialState :: Program Annotation -> AnalysisState
 initialState prog =
   let labels = createLabelMap prog
       initMap = fromList $ fmap (\x -> (x, [])) (keys labels)

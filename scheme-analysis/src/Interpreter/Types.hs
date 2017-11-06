@@ -14,7 +14,7 @@ import Control.Arrow ( second )
 
 data Value
   = VConst Constant
-  | VProc (Closure Value)
+  | VProc (Closure Annotation Value)
   | VList [Value]
   | VUndefined
   deriving ( Show, Eq )

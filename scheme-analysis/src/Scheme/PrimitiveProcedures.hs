@@ -9,14 +9,14 @@ import Scheme.Types
 
 import Data.List
 
-carsAndCdrs :: [(String, Closure a)]
+carsAndCdrs :: [(String, Closure ann a)]
 carsAndCdrs =
   let allNames = subsequences "aaaadddd"
       valid = filter (not . null) $ filter ((<= 4) . length) allNames
       withCRs = fmap (\x -> "c" ++ x ++ "r") valid
   in flip fmap withCRs $ \x -> (x, Primitive x (Exactly 1))
 
-primitiveProcedures :: [(String, Closure a)]
+primitiveProcedures :: [(String, Closure ann a)]
 primitiveProcedures =
   [ ("+",      Primitive "+" AnyNum)
   , ("=",      Primitive "=" $ AtLeast 1)

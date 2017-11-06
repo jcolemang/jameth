@@ -15,19 +15,19 @@ import Control.Monad.Identity
 
 import Debug.Trace
 
-execAnalysis :: Program -> Either AnalysisError AbstractValue
+execAnalysis :: Program Annotation -> Either AnalysisError AbstractValue
 execAnalysis prog =
   let initS = initialState prog
   in fst $ runIdentity (runStateT (runExceptT (runAnalysis (allPossibleValues prog)))
                                   initS)
 
-allPossibleValues :: Program -> AnalysisMonad AbstractValue
+allPossibleValues :: Program Annotation -> AnalysisMonad AbstractValue
 allPossibleValues (Program forms) =
   last <$> mapM iteration forms
 
 applyAbstClosure :: Label
                  -> SourcePos
-                 -> Closure AbstractValue
+                 -> Closure Annotation AbstractValue
                  -> [AbstractValue]
                  -> AnalysisMonad AbstractValue
 applyAbstClosure lab sp p vals = do
@@ -48,7 +48,7 @@ applyAbstClosure lab sp p vals = do
         Primitive name _ ->
           applyPrimProc sp name vals
 
-iteration :: Form -> AnalysisMonad AbstractValue
+iteration :: Form Annotation -> AnalysisMonad AbstractValue
 iteration (A _ (Const (SStr _))) =
   return AbstStr
 iteration (A _ (Const (SBool _))) =

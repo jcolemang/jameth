@@ -10,7 +10,7 @@ import Analysis.AnalysisTypes
 import Analysis.Analyzers.AppendAnalysis
 import Scheme.Types
 
-programAnalysis :: Program -> [LogMessage]
+programAnalysis :: Program Annotation -> [LogMessage]
 programAnalysis p =
   undefined
 

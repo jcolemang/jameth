@@ -13,12 +13,14 @@ module Scheme.Environments
   , createEmptyGlobalEnv
   , globalPairs
   , getAddress
+  , getAddressM
   , getEnvValue
   , getEnvValueM
   , getVar
   , getVarM
   , popEnv
   , withNewEnv
+  , withExtendedEnv
   , globalReference
 
   , LocalEnvironment
@@ -29,11 +31,8 @@ module Scheme.Environments
 where
 
 import Data.Map hiding ( foldl )
-import Safe ( atMay, at )
-import Data.IORef
-import Control.Monad.Trans
-
-import Debug.Trace
+import Safe ( at )
+import Control.Arrow
 
 newtype Depth = Depth Int
               deriving (Show)
@@ -50,8 +49,15 @@ data LocalEnvironment a
   | EmptyEnv
   deriving ( Show )
 
+instance Functor LocalEnvironment where
+  fmap _ EmptyEnv = EmptyEnv
+  fmap f (Env m parent) = Env (fmap (second f) m) (fmap f parent)
+
 newtype GlobalEnvironment a = GlobalEnv (Map String a)
   deriving ( Show )
+
+instance Functor GlobalEnvironment where
+  fmap f (GlobalEnv m) = GlobalEnv (fmap f m)
 
 class (Monad m) => Environment m a | m -> a where
   getLocalEnv  :: m (LocalEnvironment a)
@@ -100,6 +106,17 @@ extendEnv m = do
   -- mRefs <- refify m
   putLocalEnv $ Env m l
 
+withExtendedEnv :: Environment m a
+                => [(String, a)]
+                -> m b
+                -> m b
+withExtendedEnv m action = do
+  extendEnv m
+  val <- action
+  popEnv
+  return val
+
+
 extendGlobalEnv :: Environment m a
                 => [(String, a)]
                 -> m ()
@@ -143,6 +160,12 @@ getAddress iden local (GlobalEnv global) =
         Nothing -> Nothing
         Just _ -> Just (Global iden)
     Just (_, addr) -> Just addr
+
+getAddressM :: Environment m a => String -> m (Maybe LexicalAddress)
+getAddressM iden = do
+  l <- getLocalEnv
+  g <- getGlobalEnv
+  return $ getAddress iden l g
 
 addrDepth :: String
           -> Int

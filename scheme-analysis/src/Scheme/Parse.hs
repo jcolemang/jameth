@@ -75,7 +75,7 @@ initialGlobal =
                          , fmap (second (const BVal)) primitiveProcedures
                          ]
 
-runParse :: String -> Either ParseError Program
+runParse :: String -> Either ParseError (Program Annotation)
 runParse s =
   let initGlobal = initialState initialGlobal
   in do
@@ -83,14 +83,14 @@ runParse s =
     fst $ runIdentity (runStateT (runExceptT (runParser (parse tree)))
                                  initGlobal)
 
-parse :: [Tree] -> ParseMonad Program
+parse :: [Tree] -> ParseMonad (Program Annotation)
 parse ts =
   Program <$> mapM parseForm ts
 
-expandSyntax :: Syntax -> Tree -> ParseMonad Form
+expandSyntax :: Syntax -> Tree -> ParseMonad (Form Annotation)
 expandSyntax (BuiltIn _ f) = f
 
-parseForm :: Tree -> ParseMonad Form
+parseForm :: Tree -> ParseMonad (Form Annotation)
 parseForm t@(TreeVal v p) = do
   l <- getLabel
   return $ A (Ann p l t) (Const v)

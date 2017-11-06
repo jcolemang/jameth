@@ -3,15 +3,17 @@
 
 module Analysis.StaticAnalysis.Analysis where
 
-import Scheme.Types hiding ( form
-                           , Formals
-                           )
+import Scheme.Types ( Constant (..)
+                    , Label
+                    , Annotated (..)
+                    , getEnvValueM
+                    )
 import Analysis.StaticAnalysis.Types
+import Analysis.StaticAnalysis.AnalysisForms
+import Analysis.StaticAnalysis.Display
 
 import Prelude hiding ( lookup )
--- import Safe
 import Data.Set as S
-import Data.List as L
 import Control.Monad
 
 import Debug.Trace
@@ -31,16 +33,16 @@ runConstant SVoid lab = do
   return q
 runConstant _ _ = undefined
 
-bindFormals :: Formals -> [Set Quant] -> AnalysisMonad ()
-bindFormals (Formals qs) args =
-  when (length qs == length args) $
-       forM_ (zip args qs) (uncurry (flip addQuantsToContour))
+bindFormals :: AnalysisFormals -> [Set Quant] -> AnalysisMonad ()
+bindFormals (AnalysisFormals refs) args = do
+  when (length refs == length args)
+       (forM_ (zip (fmap snd refs) args) (uncurry addQuantsToRef))
 bindFormals _ _ = undefined
 
 applyProc :: Label -> Type -> [Set Quant] -> AnalysisMonad (Set Quant)
-applyProc _ (StaticProc lab formals) ratorQs = do
+applyProc _ (StaticProc ref formals) ratorQs = do
   bindFormals formals ratorQs
-  getQuantsLabel lab
+  getQuantsFromRef ref
 applyProc appLab _ _ = do
   q <- newQuant appLab
   addTypeToQuant (Error NotAProcedure) q
@@ -56,92 +58,45 @@ applyProcSet lab ratorQs randsQs = do
   results <- mapM (flip (applyProcQ lab) randsQs) (S.toList ratorQs)
   return $ S.unions results
 
-runForm :: Form -> AnalysisMonad (Set Quant)
+runForm :: AnalysisForm -> AnalysisMonad (Set Quant)
 runForm (A ann f) =
   let lab = label ann
   in
     case f of
-      Const c -> do
+      AnalysisConst c -> do
         q <- runConstant c (label ann)
         return $ S.singleton q
-      Var _ addr -> do
-        mval <- getEnvValueM addr
-        case mval of
-          Nothing -> do
-            q <- newQuant lab
-            addQuantsToAnn ann (S.singleton q)
-            return $ S.singleton q
-          Just cont ->
-            getQuantsFromContour cont
-      Define name body -> do
-        assignTo <- newContour
-        putInGlobalEnv name assignTo
+      AnalysisVar _ _ ref ->
+        getQuantsFromRef ref
+      AnalysisLambda ref formals bodies -> do
+        mapM_ runForm bodies
+        q <- newQuant lab
+        let t = StaticProc ref formals
+        addTypeToQuant t q
+        addQuantsToRef ref (S.singleton q)
+        getQuantsFromRef ref
+      AnalysisDefine _ ref body -> do
         bodyQuants <- runForm body
-        addQuantsToContour assignTo bodyQuants
+        addQuantsToRef ref bodyQuants
         return S.empty
-      App ratorF randsF -> do
+      AnalysisApp ratorF randsF -> do
         ratorQs <- runForm ratorF
         randsQs <- mapM runForm randsF
-        qs <- applyProcSet lab ratorQs randsQs
-        addQuantsToLabel lab qs
-        return qs
+        applyProcSet lab ratorQs randsQs
 
-runProgram :: Program -> AnalysisMonad ()
-runProgram (Program fs) =
+runProgram :: AnalysisProgram -> AnalysisMonad ()
+runProgram (AnalysisProgram fs) =
   mapM_ runForm fs
 
-runProgramStr :: Program -> AnalysisMonad String
+runProgramStr :: AnalysisProgram -> AnalysisMonad String
 runProgramStr p = do
   runProgram p
   displayTypes p
 
-execAnalysis :: Program -> AnalysisState
+execAnalysis :: AnalysisProgram -> AnalysisState
 execAnalysis p =
   runAnalysisState p (runProgram p)
 
-execAnalysisStr :: Program -> (String, AnalysisState)
+execAnalysisStr :: AnalysisProgram -> (String, AnalysisState)
 execAnalysisStr p =
   runAnalysis p (runProgramStr p)
-
-displayTypes :: Program -> AnalysisMonad String
-displayTypes (Program frms) = do
-  ss <- mapM displayTypesF frms
-  return $ unwords ss
-
-displayTypesConst :: Constant -> AnalysisMonad String
-displayTypesConst (SInt _) = return $ "{ " ++ show Numeric ++ " }"
-displayTypesConst (SNum _) = return $ "{ " ++ show Numeric ++ " }"
-displayTypesConst (SStr _) = return $ "{ " ++ show Str     ++ " }"
-
-displayVar :: Set Quant -> String -> AnalysisMonad String
-displayVar qs name = do
-  types <- S.unions <$> mapM getQuantTypes (S.toList qs)
-  let typesStr = "{ " ++ L.intercalate ", " (fmap show (S.toList types)) ++ " }"
-  return $ "[ " ++ name ++ " :: " ++ typesStr ++ " ]"
-
-displayTypesF :: Form -> AnalysisMonad String
-displayTypesF (A ann frm) =
-  case frm of
-    Const c ->
-      displayTypesConst c
-    Define name body -> do
-      bodyTypes <- displayTypesF body
-      return $ "(define " ++ name ++ " " ++ bodyTypes ++ ")"
-    Var name addr -> do
-      mcont <- getEnvValueM addr
-      case mcont of
-        Nothing ->
-          displayVar S.empty name
-        Just cont -> do
-          qs <- getQuantsFromContour cont
-          displayVar qs name
-    App rator rands -> do
-      ratorS <- displayTypesF rator
-      randsS <- mapM displayTypesF rands
-      return $ "(" ++ unwords (ratorS:randsS) ++ ")"
-
-
-getPairs :: [a] -> [(a, a)]
-getPairs [] = []
-getPairs [_] = []
-getPairs (a:b:rest) = (a, b) : getPairs rest

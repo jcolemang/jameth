@@ -4,6 +4,7 @@ import Scheme.Types
 import Interpreter.Evaluate
 import Analysis.AbstractInterpreter.Interpreter as AI
 import Analysis.StaticAnalysis.Analysis as SA
+import Analysis.StaticAnalysis.AnalysisForms
 
 import System.Environment
 import Control.Monad
@@ -35,7 +36,8 @@ main = do
       print $ AI.execAnalysis p
 
       putStrLn "Analysis"
-      let (s, state) = SA.execAnalysisStr p
+      print $ translateProgram p
+      let (s, state) = SA.execAnalysisStr (translateProgram p)
       putStrLn s
       putStrLn $ groom state
 

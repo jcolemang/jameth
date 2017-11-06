@@ -29,7 +29,7 @@ getPairs (TreeSList (TreeSList [TreeId s _, x] sp:rest) _) = do
   return ((s, x):rps)
 getPairs _ = Nothing
 
-expandLambda :: Tree -> ParseMonad Form
+expandLambda :: Tree -> ParseMonad (Form Annotation)
 expandLambda ts =
   case ts of
     TreeSList [_, TreeSList ids _, bodies] sp ->
