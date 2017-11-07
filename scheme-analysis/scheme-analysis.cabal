@@ -30,9 +30,6 @@ library
                      , Analysis.StaticAnalysis.Types
                      , Analysis.StaticAnalysis.Display
                      , Analysis.StaticAnalysis.Patterns
-                     , Analysis.StaticAnalysis.Patterns.AppendPattern
-                     , Analysis.StaticAnalysis.PatternTypes
-                     , Analysis.StaticAnalysis.AnalysisPrimitives
                      , Scheme.Forms
                      , Scheme.Environments
                      , Scheme.Display
@@ -42,10 +39,15 @@ library
                      , Scheme.ReadSource
                      , Interpreter.Types
                      , Interpreter.Evaluate
-                     , Scheme.Tokenize
   other-modules:       Scheme.PrimitiveProcedures
                      , Scheme.PrimitiveSyntax
                      , Interpreter.PrimProcs
+                     , Analysis.StaticAnalysis.Patterns.Helpers
+                     , Analysis.StaticAnalysis.AnalysisPrimitives
+                     , Analysis.StaticAnalysis.Patterns.AppendPattern
+                     , Analysis.StaticAnalysis.Patterns.EtaPattern
+                     , Analysis.StaticAnalysis.PatternTypes
+                     , Scheme.Tokenize
   build-depends:       base >= 4.7 && < 5
                      , parsec
                      , either
@@ -55,6 +57,7 @@ library
                      , path
                      , path-io
                      , safe
+                     , groom
   default-language:    Haskell2010
 
 test-suite scheme-analysis-test

@@ -12,6 +12,8 @@ import Interpreter.Types
 import Control.Monad
 import Control.Monad.Except
 
+import Debug.Trace
+
 type PrimProc = SourcePos -> [Value] -> EvalMonad Value
 
 applyPrimProc :: SourcePos -> String -> [Value] -> EvalMonad Value
@@ -141,7 +143,9 @@ mul sp = foldM (mulTwo sp) (VConst $ SInt 1)
 divTwo :: SourcePos -> Value -> Value -> EvalMonad Value
 divTwo sp x y =
   if y == (VConst $ SInt 0) || y == (VConst $ SNum 0)
-  then throwError $ ArithError sp
+  then do
+    traceShowM "Throwing error"
+    throwError $ ArithError sp
   else case (x, y) of
     (VConst (SInt a), VConst (SInt b)) ->
       if mod a b == 0
@@ -165,7 +169,11 @@ divTwo sp x y =
       typeError sp v
 divide :: SourcePos -> [Value] -> EvalMonad Value
 divide sp [] = wrongNumArgs sp
-divide sp vals = foldM (divTwo sp) (VConst $ SInt 1) vals
+divide _ [x] = return x
+divide sp (first:second:rest) = do
+  next <- divTwo sp first second
+  divide sp (next:rest)
+-- divide sp vals = foldM (divTwo sp) (VConst $ SInt 1) vals
 
 notScheme :: PrimProc
 notScheme sp vals =

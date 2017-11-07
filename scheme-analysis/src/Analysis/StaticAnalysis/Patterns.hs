@@ -5,6 +5,7 @@ module Analysis.StaticAnalysis.Patterns where
 import Analysis.StaticAnalysis.Types
 import Analysis.StaticAnalysis.PatternTypes
 import Analysis.StaticAnalysis.Patterns.AppendPattern
+import Analysis.StaticAnalysis.Patterns.EtaPattern
 import Scheme.Types
 
 import Control.Monad.Writer
@@ -14,7 +15,9 @@ import Debug.Trace
 
 testPatterns :: [PatternMatcher]
 testPatterns =
-  [ appendPattern ]
+  [ appendPattern
+  , etaPattern
+  ]
 
 runTest :: AnalysisProgram -> Log
 runTest (AnalysisProgram fs) =

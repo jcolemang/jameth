@@ -1,8 +1,6 @@
 
 import Scheme.Parse
 import Scheme.Types
-import Interpreter.Evaluate
-import Analysis.AbstractInterpreter.Interpreter as AI
 import Analysis.StaticAnalysis.Analysis as SA
 import Analysis.StaticAnalysis.AnalysisForms
 import Analysis.StaticAnalysis.Patterns
@@ -10,7 +8,6 @@ import Analysis.StaticAnalysis.Patterns
 import System.Environment
 import Control.Monad
 import Data.List
-import Text.Groom
 
 getText :: [String] -> IO String
 getText ["--file", f] = readFile f
@@ -31,7 +28,8 @@ main = do
             , analysisProg
             , _) = SA.execAnalysisStr tProg parseState
       -- putStrLn $ groom analysisState
-      putStrLn ""
+      -- putStrLn ""
+      -- print analysisProg
       putStrLn ""
       putStrLn analysisStr
       putStrLn ""

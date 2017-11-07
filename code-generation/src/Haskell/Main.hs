@@ -6,7 +6,13 @@ import System.Environment
 
 main :: IO ()
 main = do
-  path <- head <$> getArgs
-  ps <- readFile path
-  results <- getResults ps
+  args <- getArgs
+  prog <- case args of
+            [prog] ->
+              return prog
+            ["--file", path] ->
+              readFile path
+            _ ->
+              error "Invalid arguments given"
+  results <-  getResults prog
   putStrLn $ writeResults results

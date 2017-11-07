@@ -18,7 +18,7 @@ data SchemeRequest
   = Scheme String
 
 data SchemeRespone
-  = Parsed Program
+  = Parsed (Program Annotation)
 
 instance FromJSON SchemeRequest where
   parseJSON =
