@@ -13,8 +13,8 @@ import Control.Monad.Identity
 type PatternMatcher = RawAnalysisForm -> PatternMonad ()
 
 data LogMessage
-  = LogWarning SourcePos String
-  | LogError SourcePos String
+  = LogWarning String
+  | LogError String
   deriving ( Show
            )
 
@@ -29,10 +29,10 @@ newtype PatternMonad a =
              , MonadWriter Log
              )
 
-logWarning :: SourcePos -> String -> PatternMonad ()
-logWarning sp message =
-  tell [LogWarning sp message]
+logWarning :: String -> PatternMonad ()
+logWarning message =
+  tell [LogWarning message]
 
-logError :: SourcePos -> String -> PatternMonad ()
-logError sp message =
-  tell [LogError sp message]
+logError :: String -> PatternMonad ()
+logError message =
+  tell [LogError message]

@@ -36,7 +36,7 @@ module Analysis.StaticAnalysis.Types
   , newLabeledQuant
   , newQuant
   , newGlobalQuant
-  , getGlobalQuant
+  -- , getGlobalQuant
   -- , setGlobal
   , getId
   )
@@ -92,6 +92,7 @@ data Type
   | Error Error
   | Str
   | Boolean
+  | List
   | Bottom
   deriving ( Show )
 
@@ -130,6 +131,10 @@ instance Ord Type where -- Needed for sets
   Boolean `compare` Boolean = EQ
   Boolean `compare` _       = GT
   _ `compare` Boolean       = LT
+
+  List `compare` List = EQ
+  List `compare` _       = GT
+  _ `compare` List       = LT
 
   Bottom `compare` Bottom = EQ
 
@@ -294,9 +299,9 @@ runAnalysisValue :: AnalysisProgram
 runAnalysisValue prog parseState am =
   fst $ runAnalysis prog parseState am
 
-getGlobalQuant :: String -> AnalysisParse (Maybe Quant)
-getGlobalQuant name =
-  undefined
+-- getGlobalQuant :: String -> AnalysisParse (Maybe Quant)
+-- getGlobalQuant name =
+--   undefined
 
 newLabeledQuant :: Label -> AnalysisMonad Quant
 newLabeledQuant lab = do

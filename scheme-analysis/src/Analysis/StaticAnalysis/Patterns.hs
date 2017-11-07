@@ -10,6 +10,8 @@ import Scheme.Types
 import Control.Monad.Writer
 import Control.Monad.Identity
 
+import Debug.Trace
+
 testPatterns :: [PatternMatcher]
 testPatterns =
   [ appendPattern ]

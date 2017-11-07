@@ -25,27 +25,18 @@ main = do
       putStrLn "Error parsing!"
       print perr
     Right p@(Program _) -> do
-      putStrLn "Evaluating program."
-      -- putStrLn "Raw program:"
-      -- print p
-      -- print "Pretty:"
-      -- putStrLn $ join (fmap displayForm frms)
-      val <- execEval p
-      print val
-
-      -- putStrLn "Abstract analysis:"
-      -- print $ AI.execAnalysis p
-
       putStrLn "Analysis"
       let (tProg, parseState) = translateProgram p
-      let (analysisStr, analysisState) = SA.execAnalysisStr tProg parseState
+      let (analysisStr
+            , analysisProg
+            , _) = SA.execAnalysisStr tProg parseState
       -- putStrLn $ groom analysisState
-      -- putStrLn ""
-      -- putStrLn ""
+      putStrLn ""
+      putStrLn ""
       putStrLn analysisStr
-      -- putStrLn ""
-      -- putStrLn ""
-      print (runTest tProg)
+      putStrLn ""
+      print (runTest analysisProg)
+      putStrLn ""
 
       -- putStrLn "Result of analysis:"
       -- print $ runDataFlow first

@@ -121,19 +121,25 @@ populateTypes orig@(A ann f) =
         return $ A (ann { outTypes = ts })
                    (AnalysisApp ref ratorWithTypes randsWithTypes)
 
-runProgram :: AnalysisProgram -> AnalysisMonad ()
-runProgram (AnalysisProgram fs) =
+runProgram :: AnalysisProgram -> AnalysisMonad AnalysisProgram
+runProgram (AnalysisProgram fs) = do
   replicateM_ 5 (mapM_ runForm fs)
+  fsWithTypes <- mapM populateTypes fs
+  return $ AnalysisProgram fsWithTypes
 
-runProgramStr :: AnalysisProgram -> AnalysisMonad String
+runProgramStr :: AnalysisProgram -> AnalysisMonad (String, AnalysisProgram)
 runProgramStr p = do
-  runProgram p
-  displayTypes p
+  newP <- runProgram p
+  str <- displayTypes newP
+  return (str, newP)
 
 execAnalysis :: AnalysisProgram -> ParseState -> AnalysisState
 execAnalysis p parseState =
   runAnalysisState p parseState (runProgram p)
 
-execAnalysisStr :: AnalysisProgram -> ParseState -> (String, AnalysisState)
+execAnalysisStr :: AnalysisProgram
+                -> ParseState
+                -> (String, AnalysisProgram, AnalysisState)
 execAnalysisStr p parseState =
-  runAnalysis p parseState (runProgramStr p)
+  let ((a, b), c) = runAnalysis p parseState (runProgramStr p)
+  in (a, b, c)
