@@ -33,8 +33,8 @@ main = do
       val <- execEval p
       print val
 
-      putStrLn "Abstract analysis:"
-      print $ AI.execAnalysis p
+      -- putStrLn "Abstract analysis:"
+      -- print $ AI.execAnalysis p
 
       putStrLn "Analysis"
       let (tProg, parseState) = translateProgram p

@@ -14,8 +14,6 @@ import Prelude hiding ( lookup )
 import Data.Set as S
 import Control.Monad
 
-import Debug.Trace
-
 runConstant :: Constant -> Label -> AnalysisMonad Quant
 runConstant (SInt _) lab = do
   q <- newLabeledQuant lab
@@ -58,9 +56,7 @@ applyProcQ lab ratorQ randsQs = do
 
 applyProcSet :: Label -> Set Quant -> [Set Quant] -> AnalysisMonad (Set Quant)
 applyProcSet lab ratorQs randsQs = do
-  traceShowM "~~~~~ APPLYING CLOSURE ~~~~~"
   results <- mapM (flip (applyProcQ lab) randsQs) (S.toList ratorQs)
-  traceShowM $ "Results: " ++ show results
   return $ S.unions results
 
 runForm :: AnalysisForm -> AnalysisMonad (Set Quant)

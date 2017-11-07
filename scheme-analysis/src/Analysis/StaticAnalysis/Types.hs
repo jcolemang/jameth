@@ -54,6 +54,7 @@ import Data.Set as S
 data Error
   = NotAProcedure
   | TypeError
+  | WrongNumArgs
   deriving ( Show
            , Eq
            )
@@ -90,6 +91,7 @@ data Type
   | Closure StaticClosure
   | Error Error
   | Str
+  | Boolean
   | Bottom
   deriving ( Show )
 
@@ -124,6 +126,10 @@ instance Ord Type where -- Needed for sets
   Str `compare` Str = EQ
   Str `compare` _   = GT
   _   `compare` Str = LT
+
+  Boolean `compare` Boolean = EQ
+  Boolean `compare` _       = GT
+  _ `compare` Boolean       = LT
 
   Bottom `compare` Bottom = EQ
 
