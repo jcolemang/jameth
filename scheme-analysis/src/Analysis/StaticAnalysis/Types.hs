@@ -5,79 +5,52 @@
 module Analysis.StaticAnalysis.Types
   ( AnalysisMonad
   , AnalysisState
-  -- , Contour
   , Quant
   , Type (..)
+  , AnalysisProgram (..)
+  , ParseState (..)
+  , AnalysisParse (..)
+  , Ref (..)
+  , AnalysisFormals (..)
+  , AnalysisAnnotation (..)
+  , RawAnalysisForm (..)
+  , AnalysisForm
   , Error (..)
-  -- , Formals (..)
+  , StaticClosure (..)
+
+  -- , getTypes
 
   , runAnalysis
   , runAnalysisValue
   , runAnalysisState
 
-  -- , addQuantsToContour
-  -- , addQuantsToLabel
   , addQuantsToRef
   , getQuantsFromRef
 
-  -- , getQuantsAnn
   , getQuantTypes
-  -- , getQuantsLabel
-  -- , getContourTypes
+  , getRefTypes
 
   , addTypeToQuant
   , addTypesToQuant
 
   , newQuant
-  -- , newContour
-  -- , getContour
+  , scaryNewQuant
+  , getId
   )
 where
 
-import Scheme.Types hiding ( Formals )
-import Scheme.PrimitiveProcedures
-import Analysis.StaticAnalysis.AnalysisForms
+import Scheme.Types hiding ( Formals
+                           , Closure
+                           )
 
 import Control.Monad.State
 import Control.Monad.Identity
 import Data.Map as M
 import Data.Set as S
 
-import Debug.Trace
-
--- newtype Contour = Contour Int
--- deriving ( Eq
---          , Show
---          )
-
--- newContour :: AnalysisMonad Contour
--- newContour = do
---   c <- currContour <$> get
---   modify $ \s@AnalysisState { currContour = Contour i
---                             , valueTable  = vt
---                             } ->
---              s { currContour = Contour $ i + 1
---                , valueTable  = M.insert c S.empty vt
---                }
---   return c
-
--- getContour :: Label -> AnalysisMonad Contour
--- getContour lab = do
---   m <- labelContourMap <$> get
---   case M.lookup lab m of
---     Nothing -> do
---       traceShowM $ "Creating a new contour for label: " ++ show lab
---       c <- newContour
---       modify $ \s -> s { labelContourMap = M.insert lab c m }
---       getContour lab
---     Just c ->
---       return c
-
--- instance Ord Contour where
---   compare (Contour a) (Contour b) = compare a b
-
 data Error
   = NotAProcedure
+  | TypeError
   deriving ( Show
            , Eq
            )
@@ -85,16 +58,33 @@ data Error
 instance Ord Error where -- Needed for sets
   _ `compare` _ = EQ
 
--- data Formals
---   = Formals [Contour]
---   | Placeholder
---   deriving ( Show )
+data StaticClosure
+  = StaticProc Ref AnalysisFormals
+  | StaticPrimitive String ([Set Type] -> Set Type)
+
+instance Eq StaticClosure where
+  StaticPrimitive name _ == StaticPrimitive name' _ = name == name'
+  StaticProc ref _ == StaticProc ref' _ = ref == ref'
+  _ == _ = False
+
+instance Show StaticClosure where
+  show (StaticProc _ _) = "#<closure>"
+  show (StaticPrimitive _ _) = "#<closure>"
+
+instance Ord StaticClosure where
+  StaticPrimitive name _ `compare` StaticPrimitive name' _ =
+    name `compare` name'
+  StaticPrimitive _ _ `compare` _ = GT
+  _ `compare` StaticPrimitive _ _ = LT
+
+  StaticProc ref _ `compare` StaticProc ref' _ =
+    ref `compare` ref'
 
 data Type
   = Top
   | Numeric
   | Void
-  | StaticProc Ref AnalysisFormals
+  | Closure StaticClosure
   | Error Error
   | Str
   | Bottom
@@ -120,9 +110,9 @@ instance Ord Type where -- Needed for sets
   Void `compare` _    = GT
   _    `compare` Void = LT
 
-  StaticProc a _ `compare` StaticProc b _ = a `compare` b
-  StaticProc {}  `compare` _              = GT
-  _              `compare` StaticProc {}  = LT
+  Closure a `compare` Closure b = a `compare` b
+  Closure _ `compare` _ = GT
+  _ `compare` Closure _ = LT
 
   Error a `compare` Error b = a `compare` b
   Error _ `compare` _       = GT
@@ -157,6 +147,73 @@ data AnalysisState
   } deriving ( Show
              )
 
+newtype Ref
+  = Ref Int
+  deriving ( Show )
+
+getId :: Ref -> Int
+getId (Ref x) = x
+
+instance Eq Ref where
+  Ref a == Ref b = a == b
+
+instance Ord Ref where
+  Ref a `compare` Ref b = compare a b
+
+newtype AnalysisProgram
+  = AnalysisProgram [AnalysisForm]
+  deriving ( Show )
+
+type AnalysisForm = Annotated AnalysisAnnotation RawAnalysisForm
+
+data AnalysisAnnotation
+  = AnalysisAnn
+  { sourcePos :: SourcePos
+  , label :: Label
+  , outTypes :: Set Type
+  }
+  deriving ( Show )
+
+-- getTypes :: AnalysisForm -> Set Type
+-- getTypes (A ann _) = outTypes ann
+
+data AnalysisFormals
+  = AnalysisFormals [(String, Ref)]
+  | SymbolFormal Ref
+  deriving ( Show )
+
+data RawAnalysisForm
+  = AnalysisConst Constant
+  | AnalysisVar String LexicalAddress Ref
+  | AnalysisLambda Ref
+                   AnalysisFormals
+                   [AnalysisForm]
+  | AnalysisDefine String Ref AnalysisForm
+  | AnalysisApp Ref AnalysisForm [AnalysisForm]
+  deriving ( Show )
+
+data ParseState
+  = ParseState
+  { currIdentifier :: Int
+  , localEnv :: LocalEnvironment Ref
+  , globalEnv :: GlobalEnvironment Ref
+  }
+
+newtype AnalysisParse a
+  = AnalysisParse
+  { runAnalysisParse :: StateT ParseState Identity a
+  } deriving ( Functor
+             , Applicative
+             , Monad
+             , MonadState ParseState
+             )
+
+instance Environment AnalysisParse Ref where
+  getLocalEnv = localEnv <$> get
+  getGlobalEnv = globalEnv <$> get
+  putLocalEnv env = modify $ \s -> s { localEnv = env }
+  putGlobalEnv env = modify $ \s -> s { globalEnv = env }
+
 newtype AnalysisMonad a
   = AnalysisMonad
   { staticAnalysis :: StateT AnalysisState Identity a
@@ -164,17 +221,6 @@ newtype AnalysisMonad a
              , Applicative
              , Monad
              , MonadState AnalysisState )
-
--- instance Environment AnalysisMonad Contour where
---   getLocalEnv = localEnv <$> get
---   getGlobalEnv = globalEnv <$> get
---   putLocalEnv env = modify $ \s -> s { localEnv = env }
---   putGlobalEnv env = modify $ \s -> s { globalEnv = env }
-
--- initialGlobal :: [(String, Ref)]
--- initialGlobal =
---   let names = fmap fst primitiveProcedures
---   in flip fmap (zip [0..] names) $ \(i, name) -> (name, Ref i)
 
 runAnalysis :: AnalysisProgram -> AnalysisMonad a -> (a, AnalysisState)
 runAnalysis _ am =
@@ -188,13 +234,11 @@ runAnalysis _ am =
 
 runAnalysisState :: AnalysisProgram -> AnalysisMonad a -> AnalysisState
 runAnalysisState prog am =
-  undefined
-  -- snd $ runAnalysis prog am
+  snd $ runAnalysis prog am
 
 runAnalysisValue :: AnalysisProgram -> AnalysisMonad a -> a
 runAnalysisValue prog am =
-  undefined
-  -- fst $ runAnalysis prog am
+  fst $ runAnalysis prog am
 
 
 -- | Quant Manipulation
@@ -205,39 +249,18 @@ newQuant lab = do
   case M.lookup lab m of
     Nothing -> do
       qNum <- currQuantNum <$> get
-      modify $ \s -> s { currQuantNum = qNum + 1 }
-      return $ Quant qNum
+      let newQ = Quant qNum
+      modify $ \s -> s { currQuantNum = qNum + 1
+                       , lqMap = M.insert lab newQ m }
+      newQuant lab
     Just q ->
       return q
-  -- st <- get
-  -- let lcMap = labelContourMap st
-  -- case M.lookup lab lcMap of
-  --   Just cont -> do
-  --     let cqMap = contourQuantMap st
-  --     case M.lookup cont cqMap of
-  --       Nothing -> do
-  --         qCont <- newContour
-  --         let q = Quant qCont
-  --         modify $ \s@AnalysisState { typeTable = tt
-  --                                   , valueTable = vtMap
-  --                                   } ->
-  --                    s { valueTable =
-  --                          M.insert cont (S.singleton (Quant qCont)) vtMap
-  --                      , typeTable =
-  --                          M.insert q S.empty tt
-  --                      , contourQuantMap =
-  --                          M.insert cont q cqMap
-  --                      }
-  --         newQuant lab
-  --       Just x ->
-  --         return x
-  --   Nothing -> do
-  --     c <- newContour
-  --     modify $ \s@AnalysisState { labelContourMap = m
-  --                               } ->
-  --                s { labelContourMap = M.insert lab c m
-  --                  }
-  --     newQuant lab
+
+scaryNewQuant :: AnalysisMonad Quant
+scaryNewQuant = do
+  qNum <- currQuantNum <$> get
+  modify $ \s -> s { currQuantNum = qNum + 1 }
+  return $ Quant qNum
 
 getQuantsFromRef :: Ref -> AnalysisMonad (Set Quant)
 getQuantsFromRef ref = do
@@ -260,29 +283,6 @@ addQuantsToRef ref qSet =
                        existingQs `S.union` qSet
                  in
                    s { valueTable = M.insert ref newQs vt }
-  -- vt <- valueTable <$> get
-  -- case M.lookup c vt of
-  --   Nothing ->
-  --     modify $ \s@AnalysisState { valueTable = qs } ->
-  --               s { valueTable = M.insert c qSet qs }
-  --   Just quants ->
-  --     modify $ \s@AnalysisState { valueTable = qs } ->
-  --               s { valueTable = M.insert c (quants `S.union` qSet) qs }
-
--- addQuantsToLabel :: Label -> Set Quant -> AnalysisMonad ()
--- addQuantsToLabel l qSet = do
---   cm <- labelContourMap <$> get
---   case M.lookup l cm of
---     Nothing -> do
---       c <- newContour
---       modify $ \s -> s { labelContourMap = M.insert l c cm }
---       addQuantsToLabel l qSet
---     Just c ->
---       addQuantsToContour c qSet
-
--- addQuantsToAnn :: Annotation -> Set Quant -> AnalysisMonad ()
--- addQuantsToAnn ann =
---   addQuantsToLabel (label ann)
 
 addTypeToQuant :: Type -> Quant -> AnalysisMonad ()
 addTypeToQuant t quant =
@@ -295,34 +295,6 @@ addTypeToQuant t quant =
 
 addTypesToQuant :: Set Type -> Quant -> AnalysisMonad ()
 addTypesToQuant = undefined
-
--- getQuantsLabel :: Label -> AnalysisMonad (Set Quant)
--- getQuantsLabel l = do
---   cm <- labelContourMap <$> get
---   case M.lookup l cm of
---     Nothing -> do
---       c <- newContour
---       modify $ \s ->
---                  s { labelContourMap = M.insert l c cm }
---       return S.empty
---     Just x ->
---       getQuantsFromContour x
-
-getQuantsFromContour :: Ref -> AnalysisMonad (Set Quant)
-getQuantsFromContour c = do
-  undefined
-  -- qs <- valueTable <$> get
-  -- case M.lookup c qs of
-  --   Nothing -> do
-  --     modify $ \s ->
-  --                s { valueTable = M.insert c S.empty qs }
-  --     getQuantsFromContour c
-  --   Just quants ->
-  --     return quants
-
--- getQuantsAnn :: Annotation -> AnalysisMonad (Set Quant)
--- getQuantsAnn ann =
---   getQuantsLabel (label ann)
 
 getQuantTypes :: Quant -> AnalysisMonad (Set Type)
 getQuantTypes q = do
@@ -337,5 +309,5 @@ getQuantTypes q = do
 
 getRefTypes :: Ref -> AnalysisMonad (Set Type)
 getRefTypes c = do
-  quants <- getQuantsFromContour c
+  quants <- getQuantsFromRef c
   S.unions <$> mapM getQuantTypes (S.toList quants)

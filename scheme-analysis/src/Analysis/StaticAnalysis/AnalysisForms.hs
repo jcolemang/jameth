@@ -1,86 +1,48 @@
 
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module Analysis.StaticAnalysis.AnalysisForms where
 
-
-import Scheme.Types
+import Analysis.StaticAnalysis.Types
+import Analysis.StaticAnalysis.AnalysisPrimitives
+import Scheme.Types hiding ( Closure
+                           )
+import Scheme.PrimitiveProcedures
 
 import Control.Monad.State
 import Control.Monad.Identity
+import Data.Set as S
 
-data AnalysisAnnotation
-  = AnalysisAnn
-  { sourcePos :: SourcePos
-  , label :: Label
-  }
-  deriving ( Show )
+initializeGlobal :: AnalysisMonad ()
+initializeGlobal =
+  let pairs         = primitiveProcedures
+      primFuncs     = convertPrimitive <$> pairs
+      funcsWithStrs = zip (fst <$> pairs) primFuncs
+      staticPrims   = uncurry StaticPrimitive <$> funcsWithStrs
+      closures      = Closure <$> staticPrims
+  in return ()
+  -- in forM_ closures $ \c -> do
+  --   ref <- newRef
+  --   q <- scaryNewQuant
+  --   undefined
 
-newtype Ref
-  = Ref Int
-  deriving ( Show )
-
-getId :: Ref -> Int
-getId (Ref x) = x
-
-instance Eq Ref where
-  Ref a == Ref b = a == b
-
-instance Ord Ref where
-  Ref a `compare` Ref b = compare a b
-
-newtype AnalysisProgram
-  = AnalysisProgram [AnalysisForm]
-  deriving ( Show )
-
-type AnalysisForm = Annotated AnalysisAnnotation RawAnalysisForm
-
-data AnalysisFormals
-  = AnalysisFormals [(String, Ref)]
-  | SymbolFormal Ref
-  deriving ( Show )
-
-
-data RawAnalysisForm
-  = AnalysisConst Constant
-  | AnalysisVar String LexicalAddress Ref
-  | AnalysisLambda Ref
-                   AnalysisFormals
-                   [AnalysisForm]
-  | AnalysisDefine String Ref AnalysisForm
-  | AnalysisApp AnalysisForm [AnalysisForm]
-  deriving ( Show )
-
-data ParseState
-  = ParseState
-  { currIdentifier :: Int
-  , localEnv :: LocalEnvironment Ref
-  , globalEnv :: GlobalEnvironment Ref
-  }
-
-newtype AnalysisParse a
-  = AnalysisParse
-  { runAnalysisParse :: StateT ParseState Identity a
-  } deriving ( Functor
-             , Applicative
-             , Monad
-             , MonadState ParseState
-             )
 
 translateProgram :: Program Annotation -> AnalysisProgram
-translateProgram prog =
-  let initialState = ParseState { currIdentifier = 0
-                                , localEnv = createEmptyEnv
-                                , globalEnv = createGlobalEnv []
-                                }
-  in fst $ runIdentity (runStateT (runAnalysisParse (createAnalysisProgram prog)) initialState)
+translateProgram prog = fst . execAnalysisParse $ do
+  createAnalysisProgram prog
 
-instance Environment AnalysisParse Ref where
-  getLocalEnv = localEnv <$> get
-  getGlobalEnv = globalEnv <$> get
-  putLocalEnv env = modify $ \s -> s { localEnv = env }
-  putGlobalEnv env = modify $ \s -> s { globalEnv = env }
+execAnalysisParse :: AnalysisParse a -> (a, ParseState)
+execAnalysisParse m =
+  let initialState = ParseState { currIdentifier = 0
+                                , localEnv       = createEmptyEnv
+                                , globalEnv      = createGlobalEnv []
+                                }
+  in runIdentity (
+    runStateT (
+        runAnalysisParse m
+        )
+      initialState
+    )
 
 formalsMap :: AnalysisFormals -> [(String, Ref)]
 formalsMap (AnalysisFormals m) = m
@@ -99,8 +61,9 @@ translateFormals (Formals names) = do
 translateAnnotation :: Annotation -> AnalysisAnnotation
 translateAnnotation ann =
   AnalysisAnn { sourcePos = pos ann
-              , Analysis.StaticAnalysis.AnalysisForms.label =
+              , Analysis.StaticAnalysis.Types.label =
                   Scheme.Types.label ann
+              , outTypes = S.empty
               }
 
 createAnalysisProgram :: Program Annotation -> AnalysisParse AnalysisProgram
@@ -109,19 +72,19 @@ createAnalysisProgram (Program fs) =
 
 createAnalysisForm :: Form Annotation -> AnalysisParse AnalysisForm
 createAnalysisForm (A ann frm) =
-  let findOrPut var maddr =
+  let addRef var = do
+        r <- newRef
+        putInGlobalEnv var r
+        return r
+      findOrPut var maddr =
         case maddr of
-          Nothing -> do
-            r <- newRef
-            putInGlobalEnv var r
-            return r
+          Nothing ->
+            addRef var
           Just addr -> do
             mr <- getEnvValueM addr
             case mr of
-              Nothing -> do
-                r <- newRef
-                putInGlobalEnv var r
-                return r
+              Nothing ->
+                addRef var
               Just r ->
                 return r
   in do
@@ -150,8 +113,9 @@ createAnalysisForm (A ann frm) =
                    analysisBody <- createAnalysisForm body
                    return $ AnalysisDefine var ref analysisBody
                  App ratorF randsF -> do
+                   ref <- newRef
                    analysisRator <- createAnalysisForm ratorF
                    analysisRands <- mapM createAnalysisForm randsF
-                   return $ AnalysisApp analysisRator analysisRands
+                   return $ AnalysisApp ref analysisRator analysisRands
     let analysisAnnotation = translateAnnotation ann
     return $ A analysisAnnotation rawForm

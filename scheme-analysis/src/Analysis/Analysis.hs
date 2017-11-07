@@ -6,11 +6,14 @@ module Analysis.Analysis
   )
 where
 
-import Analysis.AnalysisTypes
-import Analysis.Analyzers.AppendAnalysis
+import Analysis.StaticAnalysis.Types
 import Scheme.Types
 
-programAnalysis :: Program Annotation -> [LogMessage]
+data LogMessage
+  = Warning SourcePos String
+  | Error SourcePos String
+
+programAnalysis :: AnalysisProgram -> [LogMessage]
 programAnalysis p =
   undefined
 

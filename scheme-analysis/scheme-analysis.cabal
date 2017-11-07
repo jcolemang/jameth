@@ -29,6 +29,9 @@ library
                      , Analysis.StaticAnalysis.PrimProcs
                      , Analysis.StaticAnalysis.Types
                      , Analysis.StaticAnalysis.Display
+                     , Analysis.StaticAnalysis.Patterns
+                     , Analysis.StaticAnalysis.PatternTypes
+                     , Analysis.StaticAnalysis.AnalysisPrimitives
                      , Scheme.Forms
                      , Scheme.Environments
                      , Scheme.Display

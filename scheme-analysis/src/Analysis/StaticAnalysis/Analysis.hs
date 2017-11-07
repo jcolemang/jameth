@@ -1,4 +1,5 @@
 
+
 {-# LANGUAGE RankNTypes #-}
 
 module Analysis.StaticAnalysis.Analysis where
@@ -6,17 +7,14 @@ module Analysis.StaticAnalysis.Analysis where
 import Scheme.Types ( Constant (..)
                     , Label
                     , Annotated (..)
-                    , getEnvValueM
+                    , Program (..)
                     )
 import Analysis.StaticAnalysis.Types
-import Analysis.StaticAnalysis.AnalysisForms
 import Analysis.StaticAnalysis.Display
 
 import Prelude hiding ( lookup )
 import Data.Set as S
 import Control.Monad
-
-import Debug.Trace
 
 runConstant :: Constant -> Label -> AnalysisMonad Quant
 runConstant (SInt _) lab = do
@@ -34,13 +32,13 @@ runConstant SVoid lab = do
 runConstant _ _ = undefined
 
 bindFormals :: AnalysisFormals -> [Set Quant] -> AnalysisMonad ()
-bindFormals (AnalysisFormals refs) args = do
+bindFormals (AnalysisFormals refs) args =
   when (length refs == length args)
        (forM_ (zip (fmap snd refs) args) (uncurry addQuantsToRef))
 bindFormals _ _ = undefined
 
 applyProc :: Label -> Type -> [Set Quant] -> AnalysisMonad (Set Quant)
-applyProc _ (StaticProc ref formals) ratorQs = do
+applyProc _ (Closure (StaticProc ref formals)) ratorQs = do
   bindFormals formals ratorQs
   getQuantsFromRef ref
 applyProc appLab _ _ = do
@@ -69,24 +67,57 @@ runForm (A ann f) =
       AnalysisVar _ _ ref ->
         getQuantsFromRef ref
       AnalysisLambda ref formals bodies -> do
-        mapM_ runForm bodies
+        bodyQuants <- mapM runForm bodies
         q <- newQuant lab
-        let t = StaticProc ref formals
+        let t = Closure $ StaticProc ref formals
         addTypeToQuant t q
-        addQuantsToRef ref (S.singleton q)
-        getQuantsFromRef ref
+        addQuantsToRef ref $ last bodyQuants
+        return $ S.singleton q
       AnalysisDefine _ ref body -> do
         bodyQuants <- runForm body
         addQuantsToRef ref bodyQuants
         return S.empty
-      AnalysisApp ratorF randsF -> do
+      AnalysisApp ref ratorF randsF -> do
         ratorQs <- runForm ratorF
         randsQs <- mapM runForm randsF
-        applyProcSet lab ratorQs randsQs
+        qs <- applyProcSet lab ratorQs randsQs
+        addQuantsToRef ref qs
+        getQuantsFromRef ref
+
+populateTypes :: AnalysisForm -> AnalysisMonad AnalysisForm
+populateTypes orig@(A ann f) =
+  let addTypes ts (A ann' raw) =
+        return $ A (ann' { outTypes = ts }) raw
+  in
+    case f of
+      AnalysisConst c -> do
+        q <- runConstant c (label ann)
+        ts <- getQuantTypes q
+        addTypes ts orig
+      AnalysisVar _ _ ref -> do
+        ts <- getRefTypes ref
+        addTypes ts orig
+      AnalysisLambda ref formals bodies -> do
+        ts <- getRefTypes ref
+        bodiesWithTypes <- mapM populateTypes bodies
+        return $ A (ann { outTypes = ts })
+                   (AnalysisLambda ref formals bodiesWithTypes)
+      AnalysisDefine name ref body -> do
+        bodyWithType <- populateTypes body
+        ts <- getRefTypes ref
+        return $ A (ann { outTypes = ts })
+                   (AnalysisDefine name ref bodyWithType)
+
+      AnalysisApp ref ratorF randsF -> do
+        ratorWithTypes <- populateTypes ratorF
+        randsWithTypes <- mapM populateTypes randsF
+        ts <- getRefTypes ref
+        return $ A (ann { outTypes = ts })
+                   (AnalysisApp ref ratorWithTypes randsWithTypes)
 
 runProgram :: AnalysisProgram -> AnalysisMonad ()
 runProgram (AnalysisProgram fs) =
-  mapM_ runForm fs
+  replicateM_ 5 (mapM_ runForm fs)
 
 runProgramStr :: AnalysisProgram -> AnalysisMonad String
 runProgramStr p = do

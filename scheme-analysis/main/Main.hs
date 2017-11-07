@@ -38,8 +38,11 @@ main = do
       putStrLn "Analysis"
       print $ translateProgram p
       let (s, state) = SA.execAnalysisStr (translateProgram p)
-      putStrLn s
       putStrLn $ groom state
+      putStrLn ""
+      putStrLn ""
+      putStrLn ""
+      putStrLn s
 
       -- putStrLn "Result of analysis:"
       -- print $ runDataFlow first
