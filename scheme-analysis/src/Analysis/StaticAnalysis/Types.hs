@@ -5,7 +5,7 @@
 module Analysis.StaticAnalysis.Types
   ( AnalysisMonad
   , AnalysisState
-  , Quant
+  , Quant (..)
   , Type (..)
   , AnalysisProgram (..)
   , ParseState (..)
@@ -18,8 +18,7 @@ module Analysis.StaticAnalysis.Types
   , Error (..)
   , StaticClosure (..)
 
-  -- , getTypes
-
+  , getTypes
   , runAnalysis
   , runAnalysisValue
   , runAnalysisState
@@ -28,13 +27,17 @@ module Analysis.StaticAnalysis.Types
   , getQuantsFromRef
 
   , getQuantTypes
+  , getAllQuantTypes
   , getRefTypes
 
   , addTypeToQuant
   , addTypesToQuant
 
+  , newLabeledQuant
   , newQuant
-  , scaryNewQuant
+  , newGlobalQuant
+  , getGlobalQuant
+  -- , setGlobal
   , getId
   )
 where
@@ -137,12 +140,13 @@ instance Ord Quant where
 
 data AnalysisState
   = AnalysisState
-  { currQuantNum :: Int
+  { analysisQuantNum :: Int
   , modified :: Bool
   -- | Variables' possible states
-  , valueTable :: Map Ref (Set Quant)
+  , analysisValueTable :: Map Ref (Set Quant)
   -- | The possible type of each quant
-  , typeTable :: Map Quant (Set Type)
+  , analysisTypeTable :: Map Quant (Set Type)
+  -- | Repeatedly creating the same quant for a given label
   , lqMap :: Map Label Quant
   } deriving ( Show
              )
@@ -174,8 +178,8 @@ data AnalysisAnnotation
   }
   deriving ( Show )
 
--- getTypes :: AnalysisForm -> Set Type
--- getTypes (A ann _) = outTypes ann
+getTypes :: AnalysisForm -> Set Type
+getTypes (A ann _) = outTypes ann
 
 data AnalysisFormals
   = AnalysisFormals [(String, Ref)]
@@ -194,9 +198,13 @@ data RawAnalysisForm
 
 data ParseState
   = ParseState
-  { currIdentifier :: Int
-  , localEnv :: LocalEnvironment Ref
-  , globalEnv :: GlobalEnvironment Ref
+  { currIdentifier :: Int -- for refs
+  , parseQuantNum   :: Int
+  , localEnv       :: LocalEnvironment Ref
+  , globalEnv      :: GlobalEnvironment Ref
+  , parseRefs      :: Map Ref (Set Quant)
+  , parseValues    :: Map Quant (Set Type)
+  , globalQuants   :: Map String Quant
   }
 
 newtype AnalysisParse a
@@ -222,49 +230,94 @@ newtype AnalysisMonad a
              , Monad
              , MonadState AnalysisState )
 
-runAnalysis :: AnalysisProgram -> AnalysisMonad a -> (a, AnalysisState)
-runAnalysis _ am =
-  let s = AnalysisState { modified     = False
-                        , currQuantNum = 0
-                        , lqMap        = M.empty
-                        , valueTable   = M.empty
-                        , typeTable    = M.empty
+class Monad m => Quantable m where
+  typeTable        :: m (Map Quant (Set Type))
+  modifyTypeTable  :: (Map Quant (Set Type) -> Map Quant (Set Type)) -> m ()
+  valueTable       :: m (Map Ref (Set Quant))
+  modifyValueTable :: (Map Ref (Set Quant) -> Map Ref (Set Quant)) -> m ()
+  newQuant         :: m Quant
+
+instance Quantable AnalysisMonad where
+  typeTable = analysisTypeTable <$> get
+  modifyTypeTable f = modify $ \s@AnalysisState { analysisTypeTable = att } ->
+                                 s { analysisTypeTable = f att }
+  valueTable = analysisValueTable <$> get
+  modifyValueTable f = modify $ \s@AnalysisState { analysisValueTable = avt } ->
+                                  s { analysisValueTable = f avt }
+  newQuant = do
+    qNum <- analysisQuantNum <$> get
+    modify $ \s -> s { analysisQuantNum = qNum + 1 }
+    return $ Quant qNum
+
+instance Quantable AnalysisParse where
+  typeTable = parseValues <$> get
+  modifyTypeTable f = modify $ \s@ParseState { parseValues = pv } ->
+                                 s { parseValues = f pv }
+  valueTable = parseRefs <$> get
+  modifyValueTable f = modify $ \s@ParseState { parseRefs = prs } ->
+                                  s { parseRefs = f prs }
+  newQuant = do
+    qNum <- parseQuantNum <$> get
+    modify $ \s -> s { parseQuantNum = qNum + 1 }
+    return $ Quant qNum
+
+runAnalysis :: AnalysisProgram
+            -> ParseState
+            -> AnalysisMonad a
+            -> (a, AnalysisState)
+runAnalysis _ parseState am =
+  let s = AnalysisState { modified           = False
+                        , analysisQuantNum   = parseQuantNum parseState
+                        , lqMap              = M.empty
+                        , analysisValueTable = parseRefs parseState
+                        , analysisTypeTable  = parseValues parseState
                         }
   in runIdentity (runStateT (staticAnalysis am) s)
 
-runAnalysisState :: AnalysisProgram -> AnalysisMonad a -> AnalysisState
-runAnalysisState prog am =
-  snd $ runAnalysis prog am
+runAnalysisState :: AnalysisProgram
+                 -> ParseState
+                 -> AnalysisMonad a
+                 -> AnalysisState
+runAnalysisState prog parseState am =
+  snd $ runAnalysis prog parseState am
 
-runAnalysisValue :: AnalysisProgram -> AnalysisMonad a -> a
-runAnalysisValue prog am =
-  fst $ runAnalysis prog am
+runAnalysisValue :: AnalysisProgram
+                 -> ParseState
+                 -> AnalysisMonad a
+                 -> a
+runAnalysisValue prog parseState am =
+  fst $ runAnalysis prog parseState am
 
+getGlobalQuant :: String -> AnalysisParse (Maybe Quant)
+getGlobalQuant name =
+  undefined
 
--- | Quant Manipulation
-
-newQuant :: Label -> AnalysisMonad Quant
-newQuant lab = do
-  m <- lqMap <$> get
-  case M.lookup lab m of
+newLabeledQuant :: Label -> AnalysisMonad Quant
+newLabeledQuant lab = do
+  labelMap <- lqMap <$> get
+  case M.lookup lab labelMap of
     Nothing -> do
-      qNum <- currQuantNum <$> get
-      let newQ = Quant qNum
-      modify $ \s -> s { currQuantNum = qNum + 1
-                       , lqMap = M.insert lab newQ m }
-      newQuant lab
+      q <- newQuant
+      modify $ \s -> s { lqMap = M.insert lab q labelMap }
+      newLabeledQuant lab
     Just q ->
       return q
 
-scaryNewQuant :: AnalysisMonad Quant
-scaryNewQuant = do
-  qNum <- currQuantNum <$> get
-  modify $ \s -> s { currQuantNum = qNum + 1 }
-  return $ Quant qNum
+newGlobalQuant :: String -> AnalysisParse Quant
+newGlobalQuant name = do
+  quantMap <- globalQuants <$> get
+  case M.lookup name quantMap of
+    Nothing -> do
+      q <- newQuant
+      modify $ \s@ParseState { globalQuants = gqs } ->
+                 s { globalQuants = M.insert name q gqs }
+      newGlobalQuant name
+    Just q ->
+      return q
 
-getQuantsFromRef :: Ref -> AnalysisMonad (Set Quant)
+getQuantsFromRef :: Quantable m => Ref -> m (Set Quant)
 getQuantsFromRef ref = do
-  vt <- valueTable <$> get
+  vt <- valueTable
   case M.lookup ref vt of
     Nothing -> do
       addQuantsToRef ref S.empty
@@ -272,42 +325,42 @@ getQuantsFromRef ref = do
     Just quants ->
       return quants
 
-addQuantsToRef :: Ref -> Set Quant -> AnalysisMonad ()
+addQuantsToRef :: Quantable m => Ref -> Set Quant -> m ()
 addQuantsToRef ref qSet =
-  modify $ \s@AnalysisState { valueTable = vt } ->
-             case M.lookup ref vt of
-               Nothing ->
-                 s { valueTable = M.insert ref qSet vt }
-               Just existingQs ->
-                 let newQs =
-                       existingQs `S.union` qSet
-                 in
-                   s { valueTable = M.insert ref newQs vt }
+  modifyValueTable $ \vt ->
+                       case M.lookup ref vt of
+                         Nothing ->
+                           M.insert ref qSet vt
+                         Just existingQs ->
+                           M.insert ref (existingQs `S.union` qSet) vt
 
-addTypeToQuant :: Type -> Quant -> AnalysisMonad ()
+addTypeToQuant :: Quantable m => Type -> Quant -> m ()
 addTypeToQuant t quant =
-  modify $ \s@AnalysisState { typeTable = tt } ->
-             case M.lookup quant tt of
-               Nothing ->
-                 s { typeTable = M.insert quant (S.singleton t) tt }
-               Just types ->
-                 s { typeTable = M.insert quant (S.insert t types) tt }
+  modifyTypeTable $ \tt ->
+                      case M.lookup quant tt of
+                        Nothing ->
+                          M.insert quant (S.singleton t) tt
+                        Just types ->
+                          M.insert quant (S.insert t types) tt
 
-addTypesToQuant :: Set Type -> Quant -> AnalysisMonad ()
+addTypesToQuant :: Quantable m => Set Type -> Quant -> m ()
 addTypesToQuant = undefined
 
-getQuantTypes :: Quant -> AnalysisMonad (Set Type)
+getQuantTypes :: Quantable m => Quant -> m (Set Type)
 getQuantTypes q = do
-  tTable <- typeTable <$> get
+  tTable <- typeTable
   case M.lookup q tTable of
     Nothing -> do
-      modify $ \s ->
-                 s { typeTable = M.insert q S.empty tTable  }
+      modifyTypeTable $ \_ ->
+                          M.insert q S.empty tTable
       return S.empty
     Just ts ->
       return ts
 
-getRefTypes :: Ref -> AnalysisMonad (Set Type)
+getAllQuantTypes :: Quantable m => Set Quant -> m (Set Type)
+getAllQuantTypes qs = S.unions <$> mapM getQuantTypes (S.toList qs)
+
+getRefTypes :: Quantable m => Ref -> m (Set Type)
 getRefTypes c = do
   quants <- getQuantsFromRef c
   S.unions <$> mapM getQuantTypes (S.toList quants)

@@ -4,10 +4,19 @@ module Analysis.StaticAnalysis.Patterns where
 
 import Analysis.StaticAnalysis.Types
 import Analysis.StaticAnalysis.PatternTypes
+import Analysis.StaticAnalysis.Patterns.AppendPattern
 import Scheme.Types
 
 import Control.Monad.Writer
 import Control.Monad.Identity
+
+testPatterns :: [PatternMatcher]
+testPatterns =
+  [ appendPattern ]
+
+runTest :: AnalysisProgram -> Log
+runTest (AnalysisProgram fs) =
+  runPatternMonad (mapM_ (checkPatterns testPatterns) fs)
 
 runPatternMonad :: PatternMonad a -> Log
 runPatternMonad m =

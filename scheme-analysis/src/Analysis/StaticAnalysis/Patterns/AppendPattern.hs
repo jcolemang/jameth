@@ -11,7 +11,7 @@ appendPattern :: PatternMatcher
 appendPattern frm =
   case frm of
     AnalysisApp _ (A _ appendF) [A _ (AnalysisApp _ listF [_])] ->
-      if getTypes list `isSubsetOf` empty
+      if getTypes listF `isSubsetOf` empty
       then undefined
       else undefined
     _ ->

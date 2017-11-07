@@ -15,6 +15,8 @@ type PatternMatcher = RawAnalysisForm -> PatternMonad ()
 data LogMessage
   = LogWarning SourcePos String
   | LogError SourcePos String
+  deriving ( Show
+           )
 
 type Log = [LogMessage]
 

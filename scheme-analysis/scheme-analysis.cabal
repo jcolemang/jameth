@@ -30,6 +30,7 @@ library
                      , Analysis.StaticAnalysis.Types
                      , Analysis.StaticAnalysis.Display
                      , Analysis.StaticAnalysis.Patterns
+                     , Analysis.StaticAnalysis.Patterns.AppendPattern
                      , Analysis.StaticAnalysis.PatternTypes
                      , Analysis.StaticAnalysis.AnalysisPrimitives
                      , Scheme.Forms

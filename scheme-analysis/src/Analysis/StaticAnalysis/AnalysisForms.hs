@@ -3,39 +3,47 @@
 
 module Analysis.StaticAnalysis.AnalysisForms where
 
-import Analysis.StaticAnalysis.Types
+import Scheme.PrimitiveProcedures
 import Analysis.StaticAnalysis.AnalysisPrimitives
+import Analysis.StaticAnalysis.Types
 import Scheme.Types hiding ( Closure
                            )
-import Scheme.PrimitiveProcedures
 
 import Control.Monad.State
 import Control.Monad.Identity
 import Data.Set as S
+import Data.Map as M
 
-initializeGlobal :: AnalysisMonad ()
+import Debug.Trace
+
+initializeGlobal :: AnalysisParse ()
 initializeGlobal =
   let pairs         = primitiveProcedures
       primFuncs     = convertPrimitive <$> pairs
       funcsWithStrs = zip (fst <$> pairs) primFuncs
       staticPrims   = uncurry StaticPrimitive <$> funcsWithStrs
-      closures      = Closure <$> staticPrims
-  in return ()
-  -- in forM_ closures $ \c -> do
-  --   ref <- newRef
-  --   q <- scaryNewQuant
-  --   undefined
+      closures      = zip (fst <$> pairs) (Closure <$> staticPrims)
+  in traceShowM "HERE I AM" >> forM_ closures $ \(name, c) -> do
+    q <- newGlobalQuant name
+    addTypeToQuant c q
+    r <- newRef
+    addQuantsToRef r (S.singleton q)
+    putInGlobalEnv name r
 
-
-translateProgram :: Program Annotation -> AnalysisProgram
-translateProgram prog = fst . execAnalysisParse $ do
+translateProgram :: Program Annotation -> (AnalysisProgram, ParseState)
+translateProgram prog = execAnalysisParse $ do
+  initializeGlobal
   createAnalysisProgram prog
 
 execAnalysisParse :: AnalysisParse a -> (a, ParseState)
 execAnalysisParse m =
   let initialState = ParseState { currIdentifier = 0
+                                , parseQuantNum  = 0
                                 , localEnv       = createEmptyEnv
                                 , globalEnv      = createGlobalEnv []
+                                , parseRefs      = M.empty
+                                , parseValues    = M.empty
+                                , globalQuants   = M.empty
                                 }
   in runIdentity (
     runStateT (

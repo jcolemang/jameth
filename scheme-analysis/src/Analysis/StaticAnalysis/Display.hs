@@ -28,14 +28,12 @@ displayVar ref qs name = do
   let typesStr = displayTypeSet types
   return $ "[" ++ name ++ "::" ++ typesStr ++ "]"
 
-
 displayAnalysisFormals :: AnalysisFormals -> AnalysisMonad String
 displayAnalysisFormals (AnalysisFormals m) = do
-  types <- mapM (getRefTypes . snd) m
-  let typeStrs = fmap displayTypeSet types
-  let fStrs = fmap (\(v, t) -> v ++ "::" ++ t) (zip (fmap fst m) typeStrs)
+  -- types <- mapM (getRefTypes . snd) m
+  -- let typeStrs = fmap displayTypeSet types
+  -- let fStrs = fmap (\(v, t) -> v ++ "::" ++ t) (zip (fmap fst m) typeStrs)
   return ("(" ++ unwords (fst <$> m) ++ ")")
-  -- return ("(" ++ unwords fStrs ++ ")")
 
 displayTypesF :: AnalysisForm -> AnalysisMonad String
 displayTypesF (A ann frm) =

@@ -1,5 +1,4 @@
 
-
 {-# LANGUAGE RankNTypes #-}
 
 module Analysis.StaticAnalysis.Analysis where
@@ -7,7 +6,6 @@ module Analysis.StaticAnalysis.Analysis where
 import Scheme.Types ( Constant (..)
                     , Label
                     , Annotated (..)
-                    , Program (..)
                     )
 import Analysis.StaticAnalysis.Types
 import Analysis.StaticAnalysis.Display
@@ -16,17 +14,19 @@ import Prelude hiding ( lookup )
 import Data.Set as S
 import Control.Monad
 
+import Debug.Trace
+
 runConstant :: Constant -> Label -> AnalysisMonad Quant
 runConstant (SInt _) lab = do
-  q <- newQuant lab
+  q <- newLabeledQuant lab
   addTypeToQuant Numeric q
   return q
 runConstant (SStr _) lab = do
-  q <- newQuant lab
+  q <- newLabeledQuant lab
   addTypeToQuant Str q
   return q
 runConstant SVoid lab = do
-  q <- newQuant lab
+  q <- newLabeledQuant lab
   addTypeToQuant Void q
   return q
 runConstant _ _ = undefined
@@ -41,8 +41,13 @@ applyProc :: Label -> Type -> [Set Quant] -> AnalysisMonad (Set Quant)
 applyProc _ (Closure (StaticProc ref formals)) ratorQs = do
   bindFormals formals ratorQs
   getQuantsFromRef ref
+applyProc lab (Closure (StaticPrimitive _ f)) ratorQs = do
+  types <- mapM getAllQuantTypes ratorQs
+  q <- newLabeledQuant lab
+  mapM_ (`addTypeToQuant` q) (S.toList $ f types)
+  return $ S.singleton q
 applyProc appLab _ _ = do
-  q <- newQuant appLab
+  q <- newLabeledQuant appLab
   addTypeToQuant (Error NotAProcedure) q
   return $ S.singleton q
 
@@ -53,7 +58,9 @@ applyProcQ lab ratorQ randsQs = do
 
 applyProcSet :: Label -> Set Quant -> [Set Quant] -> AnalysisMonad (Set Quant)
 applyProcSet lab ratorQs randsQs = do
+  traceShowM "~~~~~ APPLYING CLOSURE ~~~~~"
   results <- mapM (flip (applyProcQ lab) randsQs) (S.toList ratorQs)
+  traceShowM $ "Results: " ++ show results
   return $ S.unions results
 
 runForm :: AnalysisForm -> AnalysisMonad (Set Quant)
@@ -68,7 +75,7 @@ runForm (A ann f) =
         getQuantsFromRef ref
       AnalysisLambda ref formals bodies -> do
         bodyQuants <- mapM runForm bodies
-        q <- newQuant lab
+        q <- newLabeledQuant lab
         let t = Closure $ StaticProc ref formals
         addTypeToQuant t q
         addQuantsToRef ref $ last bodyQuants
@@ -94,14 +101,17 @@ populateTypes orig@(A ann f) =
         q <- runConstant c (label ann)
         ts <- getQuantTypes q
         addTypes ts orig
+
       AnalysisVar _ _ ref -> do
         ts <- getRefTypes ref
         addTypes ts orig
+
       AnalysisLambda ref formals bodies -> do
         ts <- getRefTypes ref
         bodiesWithTypes <- mapM populateTypes bodies
         return $ A (ann { outTypes = ts })
                    (AnalysisLambda ref formals bodiesWithTypes)
+
       AnalysisDefine name ref body -> do
         bodyWithType <- populateTypes body
         ts <- getRefTypes ref
@@ -124,10 +134,10 @@ runProgramStr p = do
   runProgram p
   displayTypes p
 
-execAnalysis :: AnalysisProgram -> AnalysisState
-execAnalysis p =
-  runAnalysisState p (runProgram p)
+execAnalysis :: AnalysisProgram -> ParseState -> AnalysisState
+execAnalysis p parseState =
+  runAnalysisState p parseState (runProgram p)
 
-execAnalysisStr :: AnalysisProgram -> (String, AnalysisState)
-execAnalysisStr p =
-  runAnalysis p (runProgramStr p)
+execAnalysisStr :: AnalysisProgram -> ParseState -> (String, AnalysisState)
+execAnalysisStr p parseState =
+  runAnalysis p parseState (runProgramStr p)
