@@ -36,14 +36,13 @@ module Analysis.StaticAnalysis.Types
   , newLabeledQuant
   , newQuant
   , newGlobalQuant
-  -- , getGlobalQuant
-  -- , setGlobal
   , getId
   )
 where
 
 import Scheme.Types hiding ( Formals
                            , Closure
+                           , Symbol
                            )
 
 import Control.Monad.State
@@ -93,6 +92,7 @@ data Type
   | Str
   | Boolean
   | List
+  | Symbol
   | Bottom
   deriving ( Show )
 
@@ -133,8 +133,12 @@ instance Ord Type where -- Needed for sets
   _ `compare` Boolean       = LT
 
   List `compare` List = EQ
-  List `compare` _       = GT
-  _ `compare` List       = LT
+  List `compare` _    = GT
+  _ `compare` List    = LT
+
+  Symbol `compare` Symbol = EQ
+  Symbol `compare` _      = GT
+  _ `compare` Symbol      = LT
 
   Bottom `compare` Bottom = EQ
 

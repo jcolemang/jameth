@@ -14,8 +14,6 @@ import Control.Monad.Identity
 import Data.Set as S
 import Data.Map as M
 
-import Debug.Trace
-
 initializeGlobal :: AnalysisParse ()
 initializeGlobal =
   let pairs         = primitiveProcedures
@@ -23,7 +21,7 @@ initializeGlobal =
       funcsWithStrs = zip (fst <$> pairs) primFuncs
       staticPrims   = uncurry StaticPrimitive <$> funcsWithStrs
       closures      = zip (fst <$> pairs) (Closure <$> staticPrims)
-  in traceShowM "HERE I AM" >> forM_ closures $ \(name, c) -> do
+  in forM_ closures $ \(name, c) -> do
     q <- newGlobalQuant name
     addTypeToQuant c q
     r <- newRef

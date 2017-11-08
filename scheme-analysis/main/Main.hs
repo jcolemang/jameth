@@ -22,19 +22,9 @@ main = do
       putStrLn "Error parsing!"
       print perr
     Right p@(Program _) -> do
-      putStrLn "Analysis"
       let (tProg, parseState) = translateProgram p
       let (analysisStr
             , analysisProg
             , _) = SA.execAnalysisStr tProg parseState
-      -- putStrLn $ groom analysisState
-      -- putStrLn ""
-      -- print analysisProg
-      putStrLn ""
       putStrLn analysisStr
-      putStrLn ""
       print (runTest analysisProg)
-      putStrLn ""
-
-      -- putStrLn "Result of analysis:"
-      -- print $ runDataFlow first

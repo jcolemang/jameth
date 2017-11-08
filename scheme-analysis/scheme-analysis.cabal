@@ -14,40 +14,35 @@ executable scheme-analysis
                      , scheme-analysis
                      , groom
   other-modules:
+  default-extensions:  Strict
   default-language:    Haskell2010
 
 library
   hs-source-dirs:      src/
-  exposed-modules:     Analysis.Analysis
-                     , Analysis.AnalysisTypes
-                     , Analysis.Analyzers.AppendAnalysis
-                     , Analysis.AbstractInterpreter.Interpreter
-                     , Analysis.AbstractInterpreter.Types
-                     , Analysis.AbstractInterpreter.PrimProcs
-                     , Analysis.StaticAnalysis.Analysis
+  exposed-modules:     Analysis.StaticAnalysis.Analysis
                      , Analysis.StaticAnalysis.AnalysisForms
-                     , Analysis.StaticAnalysis.PrimProcs
                      , Analysis.StaticAnalysis.Types
                      , Analysis.StaticAnalysis.Display
                      , Analysis.StaticAnalysis.Patterns
-                     , Scheme.Forms
-                     , Scheme.Environments
-                     , Scheme.Display
-                     , Scheme.Parse
                      , Scheme.Types
                      , Scheme.ParseTypes
                      , Scheme.ReadSource
                      , Interpreter.Types
                      , Interpreter.Evaluate
+                     , Scheme.Tokenize
+                     , Scheme.Parse
+                     , Scheme.Display
   other-modules:       Scheme.PrimitiveProcedures
                      , Scheme.PrimitiveSyntax
                      , Interpreter.PrimProcs
+                     , Analysis.StaticAnalysis.PrimProcs
                      , Analysis.StaticAnalysis.Patterns.Helpers
                      , Analysis.StaticAnalysis.AnalysisPrimitives
                      , Analysis.StaticAnalysis.Patterns.AppendPattern
                      , Analysis.StaticAnalysis.Patterns.EtaPattern
                      , Analysis.StaticAnalysis.PatternTypes
-                     , Scheme.Tokenize
+                     , Scheme.Forms
+                     , Scheme.Environments
   build-depends:       base >= 4.7 && < 5
                      , parsec
                      , either
@@ -59,6 +54,7 @@ library
                      , safe
                      , groom
   default-language:    Haskell2010
+  default-extensions:  Strict
 
 test-suite scheme-analysis-test
   type:                exitcode-stdio-1.0

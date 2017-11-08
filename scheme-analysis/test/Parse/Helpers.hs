@@ -3,7 +3,7 @@ module Parse.Helpers where
 
 import Scheme.Types
 
-getFirstFormA :: Either a Program -> Maybe Form
+getFirstFormA :: Either a (Program Annotation) -> Maybe (Form Annotation)
 getFirstFormA (Right (Program (x:_))) = Just x
 getFirstFormA _ = Nothing
 

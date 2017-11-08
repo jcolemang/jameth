@@ -5,8 +5,6 @@ import Scheme.Types
 import Interpreter.PrimProcs
 import Interpreter.Types
 
-import Debug.Trace
-
 -- | Top Level Definitions
 
 execEval :: Program Annotation -> IO (Either EvalError [Value])

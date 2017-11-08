@@ -103,7 +103,6 @@ extendEnv :: Environment m a
           -> m ()
 extendEnv m = do
   l <- getLocalEnv
-  -- mRefs <- refify m
   putLocalEnv $ Env m l
 
 withExtendedEnv :: Environment m a
@@ -195,17 +194,10 @@ getEnvValue _ _ _ =
 getEnvValueM :: Environment m a
              => LexicalAddress
              -> m (Maybe a)
-getEnvValueM (Global s) = do
-  (GlobalEnv m) <- getGlobalEnv
-  case Data.Map.lookup s m of
-    Nothing -> return Nothing
-    Just val -> return $ Just val
-getEnvValueM (Bound (Depth 0) (Index i)) = do
-  (Env ls _) <- getLocalEnv
-  let val = snd $ ls `at` i
-  return $ Just val
-getEnvValueM (Bound (Depth d) idx) =
-  getEnvValueM $ Bound (Depth (d - 1)) idx
+getEnvValueM addr = do
+  lEnv <- getLocalEnv
+  gEnv <- getGlobalEnv
+  return $ getEnvValue addr lEnv gEnv
 
 indexAndName :: Eq a => a -> Int -> [(a, b)] -> Maybe (Int, b)
 indexAndName _ _ [] = Nothing

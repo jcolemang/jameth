@@ -3,7 +3,6 @@
 
 module Analysis.StaticAnalysis.PatternTypes where
 
-import Scheme.Types
 import Analysis.StaticAnalysis.Types
 
 import Control.Monad.Writer

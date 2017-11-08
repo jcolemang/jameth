@@ -12,8 +12,6 @@ import Interpreter.Types
 import Control.Monad
 import Control.Monad.Except
 
-import Debug.Trace
-
 type PrimProc = SourcePos -> [Value] -> EvalMonad Value
 
 applyPrimProc :: SourcePos -> String -> [Value] -> EvalMonad Value

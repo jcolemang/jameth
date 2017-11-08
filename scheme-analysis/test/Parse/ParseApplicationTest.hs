@@ -7,7 +7,7 @@ import Parse.Helpers
 
 import Test.HUnit
 
-isRawApp :: RawForm -> Bool
+isRawApp :: RawForm a -> Bool
 isRawApp (App _ _) = True
 isRawApp _ = False
 
@@ -18,18 +18,6 @@ parseBasicApplication = TestCase $ do
 
   let r2 = getFirstFormA (runParse "(lambda (x) x)")
   assertBool "Result is lambda" $ maybe False isLambda r2
-
-  -- let r3 = getFirstForm (runParse "(lambda (lambda) lambda)")
-  -- case r3 of
-  --   Just (Lambda _ [body]) ->
-  --     assertBool "Body is a variable" $ isVar body
-  --   _ ->
-  --     assertFailure "Lambda shadowing error"
-  -- case r3 of
-  --   Just (Lambda _ [body]) ->
-  --     assertBool "Body is a variable" $ isVar body
-  --   _ ->
-  --     assertFailure "Lambda shadowing error"
 
   let r4 = getSecondForm (runParse ("(lambda (lambda) lambda)" ++
                                           "(lambda (lambda) lambda)"))

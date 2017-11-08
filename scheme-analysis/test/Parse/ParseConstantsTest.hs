@@ -7,7 +7,7 @@ import Scheme.Types
 import Test.HUnit
 
 
-getConstant :: Either t Program -> Maybe Constant
+getConstant :: Either t (Program Annotation) -> Maybe Constant
 getConstant (Right (Program [A _ (Const x)])) = Just x
 getConstant _ = Nothing
 

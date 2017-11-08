@@ -8,7 +8,6 @@ import Scheme.Types
 import ServerTypes
 import ServerHelpers
 
--- import Data.Text
 import Data.Aeson
 import Snap.Snaplet
 import Snap.Core

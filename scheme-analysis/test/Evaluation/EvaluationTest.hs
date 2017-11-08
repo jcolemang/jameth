@@ -59,6 +59,12 @@ lambdaTests = TestCase $ do
   testProg "Bad naming"        prog5 (VConst $ SInt 25)
   testProg "Extra bad naming"  prog6 (VConst $ SInt 16)
 
+moreLambdaTests :: Test
+moreLambdaTests = TestCase $ do
+  let prog1 = "(((lambda (x) (lambda (y) x)) 5) \"hello\")"
+
+  testProg "Nested lambdas" prog1 (VConst $ SInt 5)
+
 letTests :: Test
 letTests = TestCase $ do
   let prog1 = "(let ((a 1)) a)"
@@ -73,5 +79,6 @@ tests :: [Test]
 tests =
   [ basicApplicationTests
   , lambdaTests
+  , moreLambdaTests
   , letTests
   ]

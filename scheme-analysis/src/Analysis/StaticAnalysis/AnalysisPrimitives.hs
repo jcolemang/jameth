@@ -81,12 +81,12 @@ allListsToList = constructPrimitive [ allList
                                     ]
 
 convertPrimitive :: (String, Closure ann a) -> [Set Type] -> Set Type
-convertPrimitive ("+", _) args = allNum args
-convertPrimitive ("*", _) args = allNum args
-convertPrimitive ("-", _) args = allNum args
-convertPrimitive ("/", _) args = atLeastOneAllNum args
-convertPrimitive ("<", _) args = atLeastOneNumToBool args
-convertPrimitive (">", _) args = atLeastOneNumToBool args
+convertPrimitive ("+", _) args  = allNum args
+convertPrimitive ("*", _) args  = allNum args
+convertPrimitive ("-", _) args  = allNum args
+convertPrimitive ("/", _) args  = atLeastOneAllNum args
+convertPrimitive ("<", _) args  = atLeastOneNumToBool args
+convertPrimitive (">", _) args  = atLeastOneNumToBool args
 convertPrimitive ("<=", _) args = atLeastOneNumToBool args
 convertPrimitive (">=", _) args = atLeastOneNumToBool args
 
