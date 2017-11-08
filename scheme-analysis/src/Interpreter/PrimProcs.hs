@@ -143,8 +143,7 @@ mul sp = foldM (mulTwo sp) (VConst $ SInt 1)
 divTwo :: SourcePos -> Value -> Value -> EvalMonad Value
 divTwo sp x y =
   if y == (VConst $ SInt 0) || y == (VConst $ SNum 0)
-  then do
-    traceShowM "Throwing error"
+  then
     throwError $ ArithError sp
   else case (x, y) of
     (VConst (SInt a), VConst (SInt b)) ->
