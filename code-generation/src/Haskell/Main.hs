@@ -14,5 +14,5 @@ main = do
               readFile path
             _ ->
               error "Invalid arguments given"
-  results <-  getResults prog
+  results <- getResults prog
   putStrLn $ writeResults results

@@ -173,7 +173,6 @@ divide _ [x] = return x
 divide sp (first:second:rest) = do
   next <- divTwo sp first second
   divide sp (next:rest)
--- divide sp vals = foldM (divTwo sp) (VConst $ SInt 1) vals
 
 notScheme :: PrimProc
 notScheme sp vals =
