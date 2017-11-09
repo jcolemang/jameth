@@ -27,11 +27,12 @@ handleStaticAnalysis = do
       let eitherParse = runParse code
       in case eitherParse of
            Left parseError -> do
-             setBadRequest
+             setResponseOk
              respondJSON (toJSON parseError)
            Right prog ->
              let report = generateReport prog
              in do
                setResponseOk
-               traceShowM report
-               respondJSON (toJSON report)
+               let resp = toJSON report
+               traceShowM resp
+               respondJSON resp
