@@ -2,6 +2,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Interpreter.Types where
 
@@ -11,6 +12,9 @@ import Scheme.PrimitiveProcedures
 import Control.Monad.State
 import Control.Monad.Except
 import Control.Arrow ( second )
+import qualified Data.Aeson as Aeson
+import Data.Aeson ( (.=) )
+import Data.Text ( pack )
 
 data Value
   = VConst Constant
@@ -18,6 +22,18 @@ data Value
   | VList [Value]
   | VUndefined
   deriving ( Show, Eq )
+
+instance Aeson.ToJSON Value where
+  toJSON (VConst (SStr s))      = Aeson.String $ pack $ show s
+  toJSON (VConst (SBool True))  = Aeson.String $ pack $ show "#t"
+  toJSON (VConst (SBool False)) = Aeson.String $ pack $ show "#f"
+  toJSON (VConst (SInt i))      = Aeson.String $ pack $ show i
+  toJSON (VConst (SNum n))      = Aeson.String $ pack $ show n
+  toJSON (VConst (SSymbol s))   = Aeson.String $ pack $ show s
+  toJSON (VConst SVoid)         = Aeson.String $ pack $ show "#<void>"
+  toJSON (VProc _)              = Aeson.String . pack $ show "#<closure>"
+  toJSON (VList vals)           = Aeson.String . pack $
+    "(list " ++ unwords (fmap show vals) ++ ")"
 
 displayValue :: Value -> String
 displayValue (VConst c) =
@@ -36,6 +52,44 @@ data EvalError
   | WrongNumArgs SourcePos
   | ValueError SourcePos
   deriving ( Show )
+
+instance Aeson.ToJSON EvalError where
+  toJSON (NonProcedure (SP line col) _) =
+    Aeson.object
+    [ "error"  .= ("Tried to apply a non-procedure" :: Aeson.Value)
+    , "line"   .= show line
+    , "column" .= show col
+    ]
+  toJSON (UndefinedVariable (SP line col) val) =
+    Aeson.object
+    [ "error"  .= (Aeson.String . pack $ ("Variable is not defined: " ++ val))
+    , "line"   .= show line
+    , "column" .= show col
+    ]
+  toJSON (TypeError (SP line col) _) =
+    Aeson.object
+    [ "error"  .= ("There was a type error" :: Aeson.Value)
+    , "line"   .= show line
+    , "column" .= show col
+    ]
+  toJSON (ArithError (SP line col)) =
+    Aeson.object
+    [ "error"  .= ("Arithmetic error" :: Aeson.Value)
+    , "line"   .= show line
+    , "column" .= show col
+    ]
+  toJSON (WrongNumArgs (SP line col)) =
+    Aeson.object
+    [ "error"  .= ("Wrong number of arguments to procedure" :: Aeson.Value)
+    , "line"   .= show line
+    , "column" .= show col
+    ]
+  toJSON (ValueError (SP line col)) =
+    Aeson.object
+    [ "error"  .= ("There was a value error here" :: Aeson.Value)
+    , "line"   .= show line
+    , "column" .= show col
+    ]
 
 data EvalState
   = EvalState

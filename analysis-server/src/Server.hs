@@ -3,18 +3,23 @@
 
 module Server where
 
-import Handlers.HandleScheme
+import Handlers.HandleExecution
+import Handlers.HandleStaticAnalysis
 import ServerTypes
 import ServerHelpers
 
 import Snap.Snaplet
 import Snap.Core
+import Snap.Util.FileServe
 import Snap.Http.Server
 import Data.Text
 import Data.ByteString
 
 analysisRoutes :: [(ByteString, Handler b AnalysisService ())]
-analysisRoutes = [("/", method POST handleScheme)]
+analysisRoutes = [ ( "/scheme/execute", method POST handleScheme )
+                 , ( "/scheme/analysis", method POST handleStaticAnalysis )
+                 , ( "/", serveFile "../analysis-ui/index.html" )
+                 ]
 
 analysisServiceInit :: SnapletInit a AnalysisService
 analysisServiceInit = makeSnaplet "analysis" "Scheme Analysis" Nothing $ do

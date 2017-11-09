@@ -5,6 +5,7 @@ module Scheme.Display
   , displayFormals
   , displayClosure
   , displayConstant
+  , displaySList
   )
 where
 
@@ -16,11 +17,19 @@ displayProgram :: Program a -> String
 displayProgram (Program fs) =
   join $ displayForm <$> fs
 
+displaySList :: SList -> String
+displaySList slist =
+  let f sl =
+        case sl of
+          (Symbol x) -> x
+          (Constant c) -> displayConstant c
+          (SList s) -> unwords (fmap f s)
+  in "(quote " ++ f slist ++ ")"
+
 displayForm :: Form a -> String
 displayForm (A _ (Const val)) =
   displayConstant val
 displayForm (A _ (Var name addr)) =
-  -- "(" ++ name ++ ":" ++ show addr ++ ")"
   name
 displayForm (A _ (Quote val)) =
   "(quote " ++ show val ++ ")"

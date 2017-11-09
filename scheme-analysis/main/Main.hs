@@ -27,4 +27,5 @@ main = do
             , analysisProg
             , _) = SA.execAnalysisStr tProg parseState
       putStrLn analysisStr
-      print (runTest analysisProg)
+      print (runDefaultPatterns analysisProg)
+      print (getProgramErrors analysisProg)

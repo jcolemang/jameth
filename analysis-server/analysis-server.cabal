@@ -11,7 +11,10 @@ library
   exposed-modules:     Server
   other-modules:       ServerHelpers
                      , ServerTypes
-                     , Handlers.HandleScheme
+                     , Handlers.HandleExecution
+                     , Handlers.HandleStaticAnalysis
+                     , Handlers.Types
+                     , Handlers.Helpers
   build-depends:       base >= 4.7 && < 5
                      , snap
                      , snap-core
@@ -20,6 +23,7 @@ library
                      , text
                      , bytestring
                      , scheme-analysis
+                     , mtl
   default-language:    Haskell2010
 
 executable analysis-server

@@ -6,6 +6,7 @@ import Html exposing ( text
                      , div
                      , textarea
                      , h1
+                     , button
                      , form
                      , header
                      , body
@@ -19,15 +20,8 @@ import Html.Attributes exposing ( style
 import Html.Events exposing ( onInput
                             )
 import Http
+import Json.Decode as Decode
 import Debug
-
-import Json.Decode exposing ( Decoder
-                            , int
-                            , string
-                            , list
-                            )
-import Json.Decode.Pipeline exposing (decode, required)
-import Json.Encode as Encode
 
 
 -- | Types
@@ -39,35 +33,27 @@ type alias Model =
 
 type Msg
     = Program String
-    | Analysis String
-    | NewReport (Result Http.Error Report)
-
-type Report
-    = Report (List String) (List String)
+    | Analysis
+    | Report (Result Http.Error String)
 
 
 -- | Model
 
-codeEncoder : String -> Encode.Value
-codeEncoder code =
-    let attributes =
-            [ ("code", Encode.string code) ]
-    in Encode.object attributes
-
-reportDecoder : Decoder Report
-reportDecoder =
-    decode Report
-        |> required "suggestions" (list string)
-        |> required "errors" (list string)
+handleResponse : Result Http.Error a -> Msg
+handleResponse resp = Report resp
 
 doAnalysis : String -> Cmd Msg
 doAnalysis code =
-    let url = "http://localhost:8080/scheme/analysis/"
-    in Http.send NewReport
-        ( Http.post
-              url
-              (Http.jsonBody (codeEncoder code))
-              reportDecoder
+    let url = "http://localhost:8080/scheme/analysis"
+    in Debug.log "Here!"
+       Http.send  ( Http.post
+              { method = "POST"
+              , headers = [ Http.header "Content-Type" "application/json" ]
+              , url = url
+              , expect = Http.expectJson
+              }
+              Http.emptyBody
+              (Decode.list Decode.string)
         )
 
 
@@ -76,12 +62,12 @@ update msg model
     = case msg of
           Program p ->
               ({ model | program = p }, Cmd.none)
-          Analysis s ->
-              ({model | program = s}, doAnalysis model.program)
-          NewReport (Ok (Report suggestions errors)) ->
-              Debug.log (toString msg) ({ model | report = toString (suggestions ++ errors)}, Cmd.none)
-          NewReport (Err err) ->
-              Debug.log (toString msg)  ({ model | report = toString err}, Cmd.none)
+          Analysis ->
+              (model, doAnalysis model.program)
+          Report (Ok reportString) ->
+              ({ model | report = reportString }, Cmd.none)
+          Report (Err err) ->
+              (model, Cmd.none)
 
 -- | Subscriptions
 
@@ -95,7 +81,7 @@ textInput : Html.Html Msg
 textInput =
     div [  ]
         [ textarea [ placeholder "Enter program"
-                   , onInput (\s -> Analysis s)
+                   , onInput (\s -> Analysis)
                    , cols 80
                    , rows 40
                    , style [ ("resize", "vertical") ]
@@ -118,6 +104,7 @@ mainPage model =
                , body [  ]
                    [ form [  ]
                          [ textInput
+                         , button [  ] [ text "Program Analysis" ]
                          ]
                    , p [  ]
                        [ text model.report ]

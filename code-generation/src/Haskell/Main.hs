@@ -6,7 +6,7 @@ import System.Environment
 
 main :: IO ()
 main =
-  let numInBatch = 50
+  let numInBatch = 500
   in do
     args <- getArgs
     prog <- case args of

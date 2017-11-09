@@ -2,6 +2,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Scheme.ParseTypes
   ( modify', modify
@@ -22,6 +23,8 @@ import Scheme.Types
 import Control.Monad.State
 import Control.Monad.Except
 import Control.Monad.Identity
+import Data.Aeson
+import Data.Text
 
 -- | Lexing sort of things
 
@@ -75,6 +78,18 @@ data ParseError
   = ParseError SourcePos
   | InvalidSyntax String SourcePos
   deriving (Show, Eq)
+
+instance ToJSON ParseError where
+  toJSON (ParseError (SP lineNum colNum)) =
+    object [ "error" .= String "Parse Error"
+           , "line" .= String (pack $ show lineNum)
+           , "column" .= String (pack $ show colNum)
+           ]
+  toJSON (InvalidSyntax name (SP lineNum colNum)) =
+    object [ "error" .= String (pack $ "Invalid syntax in " ++ name)
+           , "line" .= String (pack $ show lineNum)
+           , "column" .= String (pack $ show colNum)
+           ]
 
 -- | Formal Syntax
 

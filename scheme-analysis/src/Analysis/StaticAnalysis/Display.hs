@@ -48,10 +48,17 @@ displayTypesF (A _ frm) =
     AnalysisVar name _ ref -> do
       qs <- getQuantsFromRef ref
       displayVar ref qs name
+    AnalysisQuote slist ->
+      return $ displaySList slist
     AnalysisLambda _ formals bodies -> do
       formalsStr <- displayAnalysisFormals formals
       bodiesStr <- unwords <$> mapM displayTypesF bodies
       return $ "(lambda " ++ formalsStr ++ " " ++ bodiesStr ++ ")"
+    AnalysisTwoIf _ test true false -> do
+      testStr <- displayTypesF test
+      trueStr <- displayTypesF true
+      falseStr <- displayTypesF false
+      return $ "(if " ++ testStr ++ " " ++ trueStr ++ " " ++ falseStr ++ ")"
     AnalysisDefine name _ body -> do
       bodyTypes <- displayTypesF body
       return $ "(define " ++ name ++ " " ++ bodyTypes ++ ")"

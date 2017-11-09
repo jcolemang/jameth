@@ -1,9 +1,11 @@
 
 
-module Analysis.StaticAnalysis.Patterns where
+module Analysis.StaticAnalysis.Patterns
+  ( runDefaultPatterns
+  )
+where
 
 import Analysis.StaticAnalysis.Types
-import Analysis.StaticAnalysis.PatternTypes
 import Analysis.StaticAnalysis.Patterns.AppendPattern
 import Analysis.StaticAnalysis.Patterns.EtaPattern
 import Scheme.Types
@@ -11,16 +13,14 @@ import Scheme.Types
 import Control.Monad.Writer
 import Control.Monad.Identity
 
-import Debug.Trace
-
 testPatterns :: [PatternMatcher]
 testPatterns =
   [ appendPattern
   , etaPattern
   ]
 
-runTest :: AnalysisProgram -> Log
-runTest (AnalysisProgram fs) =
+runDefaultPatterns :: AnalysisProgram -> Log
+runDefaultPatterns (AnalysisProgram fs) =
   runPatternMonad (mapM_ (checkPatterns testPatterns) fs)
 
 runPatternMonad :: PatternMonad a -> Log

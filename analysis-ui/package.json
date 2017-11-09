@@ -3,15 +3,17 @@
   "version": "1.0.0",
   "description": "",
   "dependencies": {
-    "elm": "0.18.0"
+      "elm": "0.18.0",
+      "elm-package": "0.18.0"
   },
   "devDependencies": {},
     "scripts": {
-        "elm": "./node_modules/elm/Elm-Platform/0.18.0/.cabal-sandbox/bin/elm",
-        "elm-make": "./node_modules/elm-make/Elm-Make-Platform/0.18.0/.cabal-sandbox/bin/elm-make",
-        "elm-package": "./node_modules/elm-make/Elm-Make-Platform/0.18.0/.cabal-sandbox/bin/elm-package",
-        "elm-reactor": "./node_modules/elm-make/Elm-Make-Platform/0.18.0/.cabal-sandbox/bin/elm-reactor",
-        "elm-repl": "./node_modules/elm/Elm-Platform/0.18.0/.cabal-sandbox/bin/elm-repl"
+        "elm"         : "./node_modules/elm/Elm-Platform/0.18.0/.cabal-sandbox/bin/elm",
+        "elm-make"    : "./node_modules/elm/Elm-Platform/0.18.0/.cabal-sandbox/bin/elm-make",
+        "elm-package" : "./node_modules/elm/Elm-Platform/0.18.0/.cabal-sandbox/bin/elm-package",
+        "elm-reactor" : "./node_modules/elm/Elm-Platform/0.18.0/.cabal-sandbox/bin/elm-reactor",
+        "elm-repl"    : "./node_modules/elm/Elm-Platform/0.18.0/.cabal-sandbox/bin/elm-repl"
+
     },
   "author": "",
   "license": "ISC"

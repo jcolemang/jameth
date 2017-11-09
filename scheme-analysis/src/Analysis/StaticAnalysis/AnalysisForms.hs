@@ -1,7 +1,10 @@
 
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module Analysis.StaticAnalysis.AnalysisForms where
+module Analysis.StaticAnalysis.AnalysisForms
+  ( translateProgram
+  )
+where
 
 import Scheme.PrimitiveProcedures
 import Analysis.StaticAnalysis.AnalysisPrimitives
@@ -95,8 +98,10 @@ createAnalysisForm (A ann frm) =
                 return r
   in do
     rawForm <- case frm of
+
                  Const c ->
                    return $ AnalysisConst c
+
                  Var name addr -> do
                    mVal <- getEnvValueM addr
                    case mVal of
@@ -105,6 +110,10 @@ createAnalysisForm (A ann frm) =
                        return $ AnalysisVar name addr ref
                      Just ref ->
                        return $ AnalysisVar name addr ref
+
+                 Quote slist ->
+                   return $ AnalysisQuote slist
+
                  Lambda formals bodies -> do
                    ref <- newRef
                    analysisFormals <- translateFormals formals
@@ -113,15 +122,28 @@ createAnalysisForm (A ann frm) =
                      return $ AnalysisLambda ref
                                              analysisFormals
                                              translatedBodies
+
+                 TwoIf test true false -> do
+                   analysisTest <- createAnalysisForm test
+                   analysisTrue <- createAnalysisForm true
+                   analysisFalse <- createAnalysisForm false
+                   ref <- newRef
+                   return $ AnalysisTwoIf ref
+                                          analysisTest
+                                          analysisTrue
+                                          analysisFalse
+
                  Define var body -> do
                    mAddr <- getAddressM var
                    ref <- findOrPut var mAddr
                    analysisBody <- createAnalysisForm body
                    return $ AnalysisDefine var ref analysisBody
+
                  App ratorF randsF -> do
                    ref <- newRef
                    analysisRator <- createAnalysisForm ratorF
                    analysisRands <- mapM createAnalysisForm randsF
                    return $ AnalysisApp ref analysisRator analysisRands
+
     let analysisAnnotation = translateAnnotation ann
     return $ A analysisAnnotation rawForm

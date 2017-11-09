@@ -1,12 +1,22 @@
 
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Analysis.StaticAnalysis.PatternTypes where
+module Analysis.StaticAnalysis.PatternTypes
+  ( Log
+  , LogMessage (..)
+  , PatternMonad (..)
+  , PatternMatcher
+  , logWarning
+  , logError
+  )
+where
 
-import Analysis.StaticAnalysis.Types
+import Analysis.StaticAnalysis.FormTypes
 
 import Control.Monad.Writer
 import Control.Monad.Identity
+import Data.Aeson
+import Data.Text
 
 
 type PatternMatcher = RawAnalysisForm -> PatternMonad ()
@@ -16,6 +26,10 @@ data LogMessage
   | LogError String
   deriving ( Show
            )
+
+instance ToJSON LogMessage where
+  toJSON (LogWarning msg) = String (pack msg)
+  toJSON (LogError msg) = String (pack msg)
 
 type Log = [LogMessage]
 
