@@ -8,3 +8,13 @@ interpreter to go along with it to simplify Scheme's debugging experience.
 Note that I am using this in part as a playground for learning about Haskell,
 static analysis, and interpreters. If you see bad code I would love to hear how
 you would improve it.
+
+* Building
+
+  To build this, you will need ~stack~ and ~ghc~. To build all executables, run
+  ~stack build~. To install the executables you can run ~stack install~. To run
+  each individual binary, run it like ~stack exec -- analysis-server~.
+
+* Dependencies
+
+  [[./doc/dependencies-depth-one.png][]]
