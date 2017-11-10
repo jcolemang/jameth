@@ -10,6 +10,8 @@ import Html exposing ( text
                      , header
                      , body
                      , p
+                     , br
+                     , button
                      , li
                      , ul
                      )
@@ -19,6 +21,7 @@ import Html.Attributes exposing ( style
                                 , rows
                                 )
 import Html.Events exposing ( onInput
+                            , onClick
                             )
 import Http
 import Debug
@@ -28,8 +31,11 @@ import Json.Decode exposing ( Decoder
                             , string
                             , list
                             , oneOf
+                            , succeed
                             )
-import Json.Decode.Pipeline exposing (decode, required)
+import Json.Decode.Pipeline exposing ( decode
+                                     , required
+                                     )
 import Json.Encode as Encode
 
 
@@ -42,7 +48,7 @@ type alias Model =
 
 type Msg
     = Program String
-    | Analysis String
+    | Analysis
     | NewReport (Result Http.Error Report)
 
 type SchemeError
@@ -101,19 +107,17 @@ doAnalysis code =
                      ])
         )
 
-
 errorToString : SchemeError -> String
 errorToString (SchemeError error line col) =
     "At line " ++ toString line ++ ", column " ++ toString col ++ ": " ++ error
-
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model
     = case msg of
           Program p ->
               ({ model | program = p }, Cmd.none)
-          Analysis s ->
-              ({model | program = s}, doAnalysis model.program)
+          Analysis ->
+              (model, doAnalysis model.program)
           NewReport (Ok report) ->
               Debug.log (toString report) ({ model | report = report}, Cmd.none)
           NewReport (Err err) ->
@@ -125,15 +129,16 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.none
 
+
 -- | Views
 
 textInput : Html.Html Msg
 textInput =
     div [  ]
         [ textarea [ placeholder "Enter program"
-                   , onInput (\s -> Analysis s)
                    , cols 80
                    , rows 40
+                   , onInput Program
                    , style [ ("resize", "vertical")
                            , ("float", "left")
                            ]
@@ -163,28 +168,33 @@ reportView report =
 
 mainPage : Model -> Html.Html Msg
 mainPage model =
-    let leftCol  = div [  ] [  ]
-        rightCol = div [  ]
-                       [
-                       ]
-    in div [ ]
-           [ leftCol
-           , div [  ]
-               [ header [  ]
-                     [ h1 [  ]
+    div [ ]
+        [ div [ ]
+              [ header [  ]
+                    [ h1 [  ]
                           [ text "Enter Program" ]
-                     ]
-               , body [  ]
-                   [ form [  ]
-                         [ textInput
-                         ]
-                   , p [  ]
-                       [ reportView model.report
-                       ]
-                   ]
-               ]
-           , rightCol
-           ]
+                    ]
+              ]
+        , div [ style [ ( "float", "left" )
+                      , ( "width", "50%" )
+                      ]
+              ] [ body [  ]
+                      [ form [  ]
+                            [ textInput
+                            ]
+                      , button [ onClick Analysis
+                               ] [ text "hello" ]
+                      ]
+
+                ]
+        , div [ style [ ( "float", "left" ) ]
+              ] [ p [  ]
+                      [ reportView model.report
+                      ]
+                ]
+        , div [ style [ ( "clear", "both" ) ]
+              ] [ ]
+        ]
 
 view : Model -> Html.Html Msg
 view model =
