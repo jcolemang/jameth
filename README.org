@@ -17,4 +17,4 @@ you would improve it.
 
 * Dependencies
 
-  [[./doc/dependencies.png][Dependencies]]
+  [[./doc/dependencies.png]]
