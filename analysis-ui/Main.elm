@@ -1,6 +1,7 @@
 
 module Hello exposing (..)
 
+import Report.Report exposing (..)
 
 import Html exposing ( text
                      , div
@@ -23,9 +24,6 @@ import Html.Attributes exposing ( style
 import Html.Events exposing ( onInput
                             , onClick
                             )
-import Http
-import Debug
-
 import Json.Decode exposing ( Decoder
                             , int
                             , string
@@ -37,79 +35,28 @@ import Json.Decode.Pipeline exposing ( decode
                                      , required
                                      )
 import Json.Encode as Encode
+import Http
+
 
 
 -- | Types
 
 type alias Model =
     { program : String
-    , report  : Report
+    , reportModel  : ReportModel
     }
 
 type Msg
     = Program String
     | Analysis
-    | NewReport (Result Http.Error Report)
-
-type SchemeError
-    = SchemeError String String String
-
-type Suggestion
-    = Suggestion String
-
-type Report
-    = Report (List Suggestion) (List SchemeError)
-    | ParseError String String String
+    | ReportMsg ReportMsg
 
 
 -- | Model
 
-codeEncoder : String -> Encode.Value
-codeEncoder code =
-    let attributes =
-            [ ("code", Encode.string code) ]
-    in Encode.object attributes
-
-suggestionDecoder : Decoder (List Suggestion)
-suggestionDecoder =
-    decode (\ls -> List.map Suggestion ls)
-        |> required "suggestions" (list string)
-
-errorDecoder : Decoder SchemeError
-errorDecoder =
-    decode SchemeError
-        |> required "error" (string)
-        |> required "line" (string)
-        |> required "column" (string)
-
-parseErrorDecoder : Decoder Report
-parseErrorDecoder =
-    decode ParseError
-        |> required "error" string
-        |> required "line" string
-        |> required "column" string
-
-reportDecoder : Decoder Report
-reportDecoder =
-    decode (\ss es -> Report (List.map Suggestion ss) es)
-        |> required "suggestions" (list string)
-        |> required "errors" (list errorDecoder)
-
-doAnalysis : String -> Cmd Msg
-doAnalysis code =
-    let url = "http://localhost:8080/scheme/analysis/"
-    in Http.send NewReport
-        ( Http.post
-              url
-              (Http.jsonBody (codeEncoder code))
-              (oneOf [ reportDecoder
-                     , parseErrorDecoder
-                     ])
-        )
-
 errorToString : SchemeError -> String
 errorToString (SchemeError error line col) =
-    "At line " ++ toString line ++ ", column " ++ toString col ++ ": " ++ error
+    "At line " ++ line ++ ", column " ++ col ++ ": " ++ error
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model
@@ -117,11 +64,7 @@ update msg model
           Program p ->
               ({ model | program = p }, Cmd.none)
           Analysis ->
-              (model, doAnalysis model.program)
-          NewReport (Ok report) ->
-              Debug.log (toString report) ({ model | report = report}, Cmd.none)
-          NewReport (Err err) ->
-              ({ model | report = Report [ ] [ ]}, Cmd.none)
+              (model, doAnalysis model.program |> Cmd.map ReportMsg)
 
 -- | Subscriptions
 
@@ -162,7 +105,7 @@ reportView report =
                     (List.append suggestionView errorsView)
         (ParseError error line column) ->
             let errorText =
-                    "At line " ++ toString line ++ ", column " ++ toString column ++ ": " ++ error
+                    "At line " ++ line ++ ", column " ++ column ++ ": " ++ error
             in ul [  ]
                   [ p [ ] [ text errorText ] ]
 
@@ -189,7 +132,7 @@ mainPage model =
                 ]
         , div [ style [ ( "float", "left" ) ]
               ] [ p [  ]
-                      [ reportView model.report
+                      [ report model.reportModel
                       ]
                 ]
         , div [ style [ ( "clear", "both" ) ]
@@ -212,7 +155,7 @@ init =
 initialModel : Model
 initialModel =
     { program = ""
-    , report = Report [ ] [ ]
+    , reportModel = initialReportModel
     }
 
 main =
