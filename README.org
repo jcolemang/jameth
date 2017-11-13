@@ -1,20 +1,60 @@
 * Scheme Analysis
 
-This is a library I am writing for a functional programming design class. My
-main intention is to create a reasonable static analysis library to be used by
-students current at Rose-Hulman. I would ideally also like to create an
-interpreter to go along with it to simplify Scheme's debugging experience.
+  This is a library I am writing for a functional programming design class. My
+  main intention is to create a reasonable static analysis library to be used by
+  students current at Rose-Hulman. I would ideally also like to create an
+  interpreter to go along with it to simplify Scheme's debugging experience.
 
-Note that I am using this in part as a playground for learning about Haskell,
-static analysis, and interpreters. If you see bad code I would love to hear how
-you would improve it.
+  Note that I am using this in part as a playground for learning about Haskell,
+  static analysis, and interpreters. If you see bad code I would love to hear how
+  you would improve it.
 
-* Building
+** Building
 
-  To build this, you will need ~stack~ and ~ghc~. To build all executables, run
-  ~stack build~. To install the executables you can run ~stack install~. To run
-  each individual binary, run it like ~stack exec -- analysis-server~.
+   To build the analysis and server libraries you will need to have ~stack~
+   installed. You can view the installation guide for ~stack~ [[https://docs.haskellstack.org/en/stable/install_and_upgrade/][here]]. It should be
+   as easy as ~sudo apt-get install stack~ or ~sudo pacman -S stack~ and so on.
+   Once you have ~stack~ installed and configured, just run the following bash
+   code:
 
-* Dependencies
+   #+BEGIN_SRC bash
+   stack build
+   #+END_SRC
 
-  [[./doc/dependencies.png]]
+   And that's it! The first time you run this it will take a while. Stack will
+   probably be building and installing a reasonably long list of dependencies.
+   If you haven't built anything with stack before you will need to run ~stack
+   setup~ first, or you will need to add ~--install-ghc~ to the build command.
+   This will make the first build time substantially worse, but has the upside
+   of adding more Haskell to your computer.
+
+   If you would like to store the binaries in your path, you can run
+
+   #+BEGIN_SRC bash
+   stack install
+   #+END_SRC
+
+** Dependencies
+
+   The stack dependencies can be viewed using the [[./doc/dependencies-depth-one.dot][given dot code]] or by viewing
+   the compiled [[./doc/dependencies.png][image]].
+
+
+* Analysis UI
+
+** Building
+
+   To build the UI, you will need to have ~npm~ installed. From the
+   ~./analysis-ui/~ folder, run
+
+   #+BEGIN_SRC bash
+   npm install
+   npm run elm-make Main.elm
+   #+END_SRC
+
+   This should compile the Elm source code into one ~index.html~ file in the
+   ~analysis-ui~ directory.
+
+* Planned Features
+
+  These can be viewed in my [[./doc/wish-list.org][wish list]].

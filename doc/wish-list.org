@@ -1,75 +1,40 @@
 
-* Sort of refinement types
-  To debug, you could add assertions to functions. This could include their
-  arguments, or it could include their return values. If the function is ever
-  called yielding a false assertion, an error will be thrown and it will print
-  out some sort of stack trace, as well as the bad input.
+* Wish List
 
-  #+BEGIN_SRC scheme
-  (define some-function
-    (lambda (x)
-      (some-function (add1 x))))
+  This is a list of features I would like to implement. There is not a
+  particular order, and this is not guaranteed to be up to date. Individual
+  features will be broken into smaller pieces as I get started on them.
 
-  (assert-returns some-function (lambda (x) (< 0 x)))
-  #+END_SRC
+** Real macros
+   To really implement a useful Scheme tool, I need hygenic macros. This would
+   be difficult, but would allow me to load all of the Chez Scheme definitions
+   without writing each of them myself. Without this I need to write each
+   expansion by hand using pattern matches on the syntax tree, and need to debug
+   any ways in which my implementations deviate from Chez's behavior.
 
-* Stack traces
-  Whenever there is an error in the program, it will not only print out a nice
-  error message, but also a stack trace of the execution.
+** A linter
+   Currently I am stuck between writing an abstract interpreter and more static
+   tools. Somewhere in here, there should really be some kind of linter. It could
+   give suggestions based on the types of expressions (determined statically or
+   dynamically) and could even give code style feedback. The code style feedback
+   would need to be integrated into the parser itself, which would be tricky.
 
-* Watch expressions
-  The ability to add traces to individual expressions. This would print out how
-  the expression was called and would print out the return value of the
-  expression.
+** Mutation warnings
+   Doing something like this will make you sad:
 
-  #+BEGIN_SRC scheme
-  (define some-function
-    (lambda (x)
-      (some-function (watch (add1 x)))))
-  #+END_SRC
-
-* A basic debugger
-  This would not be all that difficult once the interpreter was written in
-  continuation passing style. You could keep track of the previous expression
-  evaluated. On error, you would give the user a prompt with that state frozen
-  in time. This might require some monad trickery to keep the state when there
-  are exceptions. Reordering the monad stack would make life difficult
-  throughout the rest of the code.
-
-* Real macros
-  To really implement a useful Scheme interpreter, I need hygenic macros. This
-  would be difficult, but would allow me to load all of the Chez Scheme
-  definitions without writing each of them myself.
-
-* A linter
-  Currently I am stuck between writing an abstract interpreter and more static
-  tools. Somewhere in here, there should really be some kind of linter. It could
-  give suggestions based on the types of expressions (determined statically or
-  dynamically) and could even give code style feedback. The code style feedback
-  would need to be integrated into the parser itself, which would be tricky.
-
-* Automatic detection of bad numbers of procedure arguments
-  This is the big one. I would like to be able to tell the user whether there is
-  the possibility that their code will yield an error based on the number of
-  arguments. Right now this is done with an abstract interpreter, but I would
-  like to try the static approach.
-
-* Mutation warnings
-  Doing something like this will make you sad:
-
-  #+BEGIN_SRC scheme
+   #+BEGIN_SRC scheme
   (define a 10)
   (+ a a a (begin (set! a 1) a) a a a)
-  #+END_SRC
+   #+END_SRC
 
-  I would like to be able to detect when someone could potentially observe the
-  non deterministic/undefined behavior of a Scheme program and warn them to
-  stop. This would really just end up being the detection of whenever someone
-  uses side effectful code in their argument parameters.
+   I would like to be able to detect when someone could potentially observe the
+   non deterministic/undefined behavior of a Scheme program and warn them to
+   stop. This would really just end up being the detection of whenever someone
+   uses side effectful code in their argument parameters.
 
-* Web UI
-  Definitely *not* a web Scheme editor. What I would ideally like is just a way
-  to upload a file. This file would then be sent to the server, and it would
-  either be sent through an analysis or it would be sent through an interpreter.
-  On response, the UI would display the file with highlighted warnings and
-  errors.
+** Web UI
+   Definitely *not* a web Scheme editor. What I would ideally like is just a way
+   to upload a file. This file would then be sent to the server, and it would
+   either be sent through an analysis or it would be sent through an
+   interpreter. On response, the UI would display a generated interactive form
+   which would show things like predicted types of individual expressions.
