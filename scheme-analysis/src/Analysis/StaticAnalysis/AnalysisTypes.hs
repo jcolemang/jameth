@@ -27,9 +27,9 @@ data Report
   } deriving ( Show )
 
 instance ToJSON Report where
-  toJSON (Report { errors = errs
+  toJSON Report { errors = errs
                  , suggestions = sgtns
-                 } ) =
+                 } =
     object [ "errors" .= errs
            , "suggestions" .= sgtns
            ]

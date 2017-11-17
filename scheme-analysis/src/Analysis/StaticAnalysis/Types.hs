@@ -43,8 +43,8 @@ import Control.Monad.Identity
 import Data.Map as M
 import Data.Set as S
 
-getId :: Ref -> Int
-getId (Ref x) = x
+-- getId :: Ref -> Int
+-- getId (Ref x) = x
 
 getTypes :: AnalysisForm -> Set Type
 getTypes (A ann _) = outTypes ann
@@ -69,7 +69,14 @@ newLabeledQuant lab = do
   case M.lookup lab labelMap of
     Nothing -> do
       q <- newQuant
-      modify $ \s -> s { lqMap = M.insert lab q labelMap }
+      modify $ \s -> let newMap = M.insert lab q labelMap
+                     in if newMap == labelMap
+                        then s
+                        else
+                          s { lqMap = newMap
+                            , modified = True
+                            }
+
       newLabeledQuant lab
     Just q ->
       return q
@@ -81,7 +88,8 @@ newGlobalQuant name = do
     Nothing -> do
       q <- newQuant
       modify $ \s@ParseState { globalQuants = gqs } ->
-                 s { globalQuants = M.insert name q gqs }
+                 let newQuants = M.insert name q gqs
+                 in s { globalQuants = newQuants }
       newGlobalQuant name
     Just q ->
       return q

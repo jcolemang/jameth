@@ -26,6 +26,7 @@ import Prelude hiding ( lookup )
 import Data.Set as S
 import Control.Monad
 import Data.Maybe ( catMaybes )
+import Control.Monad.State
 
 generateReport :: Program Annotation -> Report
 generateReport prog =
@@ -44,9 +45,9 @@ returnConst lab t = do
   addTypeToQuant t q
   return q
 
-isError :: Type -> Bool
-isError (Error _) = True
-isError _ = False
+-- isError :: Type -> Bool
+-- isError (Error _) = True
+-- isError _ = False
 
 getError :: Type -> Maybe Error
 getError (Error e) = Just e
@@ -195,10 +196,14 @@ populateTypes orig@(A ann f) =
                    (AnalysisApp ref ratorWithTypes randsWithTypes)
 
 runProgram :: AnalysisProgram -> AnalysisMonad AnalysisProgram
-runProgram (AnalysisProgram fs) = do
-  replicateM_ 5 (mapM_ runForm fs)
-  fsWithTypes <- mapM populateTypes fs
-  return $ AnalysisProgram fsWithTypes
+runProgram prog@(AnalysisProgram fs) = do
+  mapM_ runForm fs
+  wasModified <- modified <$> get
+  if wasModified
+    then do modify $ \s -> s { modified = False }
+            runProgram prog
+    else do fsWithTypes <- mapM populateTypes fs
+            return $ AnalysisProgram fsWithTypes
 
 runProgramStr :: AnalysisProgram -> AnalysisMonad (String, AnalysisProgram)
 runProgramStr p = do
