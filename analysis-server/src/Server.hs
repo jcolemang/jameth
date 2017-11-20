@@ -14,16 +14,19 @@ import Snap.Util.FileServe
 import Snap.Http.Server
 import Data.Text
 import Data.ByteString
+import Path
 
-analysisRoutes :: [(ByteString, Handler b AnalysisService ())]
-analysisRoutes = [ ( "/scheme/execute", method POST handleScheme )
-                 , ( "/scheme/analysis", method POST handleStaticAnalysis )
-                 , ( "/", serveFile "../analysis-ui/index.html" )
-                 ]
+analysisRoutes :: Path x File -> [(ByteString, Handler b AnalysisService ())]
+analysisRoutes p =
+  let strPath = toFilePath p
+  in [ ( "/scheme/execute", method POST handleScheme )
+     , ( "/scheme/analysis", method POST handleStaticAnalysis )
+     , ( "/", serveFile strPath )
+     ]
 
-analysisServiceInit :: SnapletInit a AnalysisService
-analysisServiceInit = makeSnaplet "analysis" "Scheme Analysis" Nothing $ do
-  addRoutes analysisRoutes
+analysisServiceInit :: Path x File -> SnapletInit a AnalysisService
+analysisServiceInit p = makeSnaplet "analysis" "Scheme Analysis" Nothing $ do
+  addRoutes $ analysisRoutes p
   return AnalysisService
 
 config :: Config Snap a
@@ -35,6 +38,6 @@ config =
 apiRoutes :: [(Text, Handler b Api ())]
 apiRoutes = [("status", method GET setResponseOk)]
 
-runServer :: IO ()
-runServer =
-  serveSnaplet config analysisServiceInit
+runServer :: Path x File -> IO ()
+runServer p =
+  serveSnaplet config (analysisServiceInit p)

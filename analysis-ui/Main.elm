@@ -2,6 +2,7 @@
 module Hello exposing (..)
 
 import Report.Report exposing (..)
+import Report.View exposing (..)
 
 import Html exposing ( text
                      , div
@@ -46,6 +47,10 @@ type alias Model =
     , reportModel  : ReportModel
     }
 
+updateWithNewReport : Model -> ReportModel -> Model
+updateWithNewReport model newReport =
+    { model | reportModel = newReport }
+
 type Msg
     = Program String
     | Analysis
@@ -54,10 +59,6 @@ type Msg
 
 -- | Model
 
-errorToString : SchemeError -> String
-errorToString (SchemeError error line col) =
-    "At line " ++ line ++ ", column " ++ col ++ ": " ++ error
-
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model
     = case msg of
@@ -65,6 +66,12 @@ update msg model
               ({ model | program = p }, Cmd.none)
           Analysis ->
               (model, doAnalysis model.program |> Cmd.map ReportMsg)
+          ReportMsg reportMsg ->
+              Report.Report.update
+                  (updateWithNewReport model)
+                  ReportMsg
+                  reportMsg
+                  model.reportModel
 
 -- | Subscriptions
 
@@ -87,27 +94,6 @@ textInput =
                            ]
                    ] [ ]
         ]
-
-reportView : Report -> Html.Html Msg
-reportView report =
-    case report of
-        (Report suggestions errors) ->
-            let errorsStrings = List.map errorToString errors
-                errorsView =
-                    errorsStrings
-                        |> List.map (\s -> li [ ] [ text s ])
-                suggestionView =
-                    suggestions
-                        |> List.map (\(Suggestion s) -> s)
-                        |> List.map (\s -> li [ ] [ text s ] )
-            in
-                ul [ style [ ] ]
-                    (List.append suggestionView errorsView)
-        (ParseError error line column) ->
-            let errorText =
-                    "At line " ++ line ++ ", column " ++ column ++ ": " ++ error
-            in ul [  ]
-                  [ p [ ] [ text errorText ] ]
 
 mainPage : Model -> Html.Html Msg
 mainPage model =
@@ -132,7 +118,7 @@ mainPage model =
                 ]
         , div [ style [ ( "float", "left" ) ]
               ] [ p [  ]
-                      [ report model.reportModel
+                      [ viewReport ReportMsg model.reportModel
                       ]
                 ]
         , div [ style [ ( "clear", "both" ) ]

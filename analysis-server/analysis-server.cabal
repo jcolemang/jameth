@@ -24,6 +24,7 @@ library
                      , bytestring
                      , scheme-analysis
                      , mtl
+                     , path
   default-language:    Haskell2010
 
 executable analysis-server
@@ -33,5 +34,6 @@ executable analysis-server
   build-depends:       base >= 4.7 && < 5
                      , scheme-analysis
                      , analysis-server
+                     , path
   other-modules:
   default-language:    Haskell2010
